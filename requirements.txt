@@ -1,0 +1,12 @@
+flask
+streamlit
+psycopg2-binary
+pgvector
+langgraph
+litellm
+python-dotenv
+requests
+pydantic
+openai
+google-generativeai
+groq
