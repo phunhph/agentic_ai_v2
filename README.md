@@ -1,8 +1,23 @@
-# Autonomous CRM Intelligence System (Agentic AI)
+# 🚀 Autonomous CRM Intelligence System (Agentic AI)
 
 Chào mừng bạn đến với dự án **Agentic CRM Intelligence System**. Đây là một hệ thống AI Agent đa tầng được thiết kế để cung cấp khả năng truy vấn và phân tích dữ liệu CRM một cách thông minh, an toàn và có khả năng tự học.
 
-## 🚀 Quy trình hoạt động (Agent Pipeline)
+---
+
+## 📖 Tài liệu Hướng dẫn (Documentation)
+
+Hệ thống được thiết kế bài bản với bộ tài liệu chi tiết giúp bạn nhanh chóng làm quen:
+
+| Tài liệu | Đối tượng | Nội dung chính |
+|---|---|---|
+| 🌟 [**Tổng quan Hệ thống**](docs/system_overview.md) | Mọi người | Tầm nhìn, tính năng và cách AI làm việc (Dễ hiểu). |
+| 🏗️ [**Kiến trúc & Luồng xử lý**](docs/architecture_flow.md) | Kỹ thuật | Sơ đồ Mermaid, Cấu trúc thư mục và Luồng Agent. |
+| 🛠️ [**Lộ trình Công nghệ**](docs/tech_stack.md) | Kỹ thuật | Chi tiết các thư viện & LLMs sử dụng theo từng Phase. |
+
+---
+
+## 🧩 Quy trình hoạt động (Agent Pipeline)
+Hệ thống hoạt động dựa trên 5 tầng Agent phối hợp nhịp nhàng:
 ```mermaid
 graph LR
     User((User)) --> IA[IngestAgent]
@@ -12,45 +27,33 @@ graph LR
     EA --> LA[LearningAgent]
     LA --> Memory[(pgvector)]
     Memory -.-> RA
-    EA <--> DB[(PostgreSQL)]
 ```
 
+---
+
 ## 🚀 Tính năng nổi bật
-- **Kiến trúc 5 tầng Agent**: Ingest, Reasoning, Planning, Execution, Learning.
-- **Tư duy CoT (Chain-of-Thought)**: AI giải thích cách suy luận trước khi hành động.
-- **Tự sửa lỗi (Self-Healing)**: Tự động sửa lỗi SQL và thử lại.
-- **Bộ nhớ dài hạn (pgvector)**: Ghi nhớ các mẫu thành công để tối ưu hóa chi phí và tốc độ.
-- **Bảo mật tối đa**: Sử dụng giao thức MCP và RBAC để bảo vệ dữ liệu.
+- **Traceable UI**: Xem lộ trình tư duy (Chain-of-Thought) của Agent theo thời gian thực.
+- **Context Awareness**: Hiểu ngữ cảnh hội thoại nhiều lượt (giải quyết đại từ "nó", "họ"...).
+- **Secure Execution**: Thực thi SQL an toàn thông qua lớp bảo mật RBAC và Tool Layer.
+- **Self-Learning**: Ghi nhớ các mẫu thành công để tối ưu hóa chi phí và tốc độ.
 
-## 📂 Cấu trúc Dự án
-Xem sơ đồ trực quan tại: [tasks/project_structure.md](tasks/project_structure.md)
+---
 
-- `plans/`: Chứa các tài liệu chi tiết cho từng phase phát triển.
-- `tasks/`: Chứa danh sách các công việc cụ thể cho từng phase và mô tả hệ thống.
-- `core/`: Mã nguồn cốt lõi của hệ thống Agent.
+## 📂 Cấu trúc Dự án (Sơ lược)
 - `apps/`: Giao diện người dùng (Streamlit) và API Backend (Flask).
-- `data/`: Các script migration và định nghĩa schema.
+- `core/`: Trái tim của hệ thống (Graph, Agents, Tools).
+- `docs/`: Tài liệu hướng dẫn và kiến trúc.
+- `plans/`: Kế hoạch chi tiết cho từng giai đoạn (Phase 1-10).
+- `tasks/`: Danh sách các công việc cần làm (Checklist).
 
-## 🛠️ Công nghệ sử dụng
-- **LangGraph**: Điều phối Agent.
-- **Groq (Llama3)**: Suy luận và thực thi nhanh.
-- **Gemini (Flash)**: Phân tích đầu vào và lập kế hoạch.
-- **PostgreSQL + pgvector**: Lưu trữ dữ liệu và bộ nhớ ngữ nghĩa.
-- **Flask & Streamlit**: API và giao diện người dùng.
-
-## 📖 Tài liệu hướng dẫn
-1. [Mô tả hệ thống](tasks/system_description.md)
-2. [Kiến trúc hệ thống](tasks/system_architecture.md)
-3. [Danh sách công việc (To-Do)](tasks/)
+---
 
 ## 📝 Roadmap Phát triển
-Hệ thống được phát triển qua 9 Phase:
-- Phase 1: Kiến trúc & Thông số kỹ thuật.
-- Phase 2: Di chuyển Database & Tối ưu Schema.
-- Phase 3: Khởi tạo Project & Giao diện Traceable.
-- Phase 4: Công cụ gọi & Kiến trúc bảo mật.
-- Phase 5: Tầng IngestAgent (Gatekeeper).
-- Phase 6: Tầng ReasoningAgent (Thinker).
-- Phase 7: Tầng PlanningAgent (BabyAGI).
-- Phase 8: Tầng ExecutionAgent (Doer).
-- Phase 9: Tầng LearningAgent (Scholar).
+Hệ thống được phát triển qua 10 Phase chuyên sâu:
+- **Phase 1-3**: Khởi tạo hạ tầng, Database và UI (Đã hoàn thành ✅).
+- **Phase 4**: Tool Calling & Security Architecture.
+- **Phase 5-9**: Triển khai chuyên sâu 5 lớp Agent.
+- **Phase 10**: Context Monitoring & Logic Validation (Đang triển khai 🔄).
+
+---
+*Phát triển bởi đội ngũ chuyên gia AI Agent.*
