@@ -57,7 +57,7 @@ def chat():
     }
 
     # Thực thi LangGraph
-    final_state = graph.invoke(initial_state)  # type: ignore
+    final_state = graph.invoke(initial_state, config={"configurable": {"thread_id": thread_id}})  # type: ignore
     
     trace_log = final_state.get("trace_log", [])
     trace_details = final_state.get("trace_details", [])

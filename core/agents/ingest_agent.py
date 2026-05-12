@@ -39,7 +39,7 @@ TRẢ VỀ JSON (không markdown):
 
     try:
         response = completion(  # type: ignore
-            model=os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash"),
+            model=os.getenv("GEMINI_MODEL", "models/gemini-embedding-2-preview"),
             messages=[{"role": "system", "content": prompt}],
             api_key=os.getenv("GEMINI_API_KEY"),
             response_format={ "type": "json_object" }

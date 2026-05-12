@@ -11,6 +11,9 @@ from litellm import embedding
 from core.utils.db import db_manager
 import math
 
+EMBEDDING_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/google/gemma-3-12b")
+EMBEDDING_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
 def run_learning_agent(
     query: str,
     sql_generated: str,
@@ -113,11 +116,12 @@ def find_semantic_cache(query: str, threshold: float = 0.95) -> Optional[Dict[st
     return None
 
 def _generate_query_embedding(query: str) -> List[float]:
-    """Generate vector embedding cho query bằng gemini/text-embedding-004"""
+    """Generate vector embedding cho query using OpenRouter."""
     try:
         response = embedding(
-            model="gemini/text-embedding-004",
-            input=[query]
+            model=EMBEDDING_MODEL,
+            input=[query],
+            api_key=EMBEDDING_API_KEY
         )
         return response.data[0].embedding
     except Exception as e:

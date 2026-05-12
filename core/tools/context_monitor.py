@@ -167,7 +167,37 @@ class ContextMonitor:
         
         return [col.strip() for col in columns_str.split(",")]
     
-    def _is_sane_value(self, column_name: str, value: Any) -> bool:
+    def validate_schema_usage(self, sql: str) -> Dict[str, Any]:
+        """
+        Kiểm tra xem SQL có sử dụng schema hợp lệ không
+        """
+        validation = {
+            "is_valid": True,
+            "issues": [],
+            "used_tables": [],
+            "used_columns": []
+        }
+        
+        # Extract tables from SQL
+        table_pattern = r'\bFROM\s+(\w+)|JOIN\s+(\w+)'
+        tables = []
+        for match in re.finditer(table_pattern, sql, re.IGNORECASE):
+            table = match.group(1) or match.group(2)
+            if table:
+                tables.append(table.lower())
+        
+        validation["used_tables"] = tables
+        
+        # TODO: Check against actual schema metadata
+        # For now, assume common tables are valid
+        valid_tables = ["hbl_account", "sys_choice_options", "sys_relation_metadata"]
+        
+        for table in tables:
+            if table not in [t.lower() for t in valid_tables]:
+                validation["issues"].append(f"Table '{table}' may not exist in schema")
+                validation["is_valid"] = False
+        
+        return validation
         """Check nếu giá trị hợp lý cho column type"""
         if value is None:
             return True  # NULL is always valid

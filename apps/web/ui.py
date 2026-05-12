@@ -134,6 +134,7 @@ if prompt := st.chat_input("Hỏi tôi về doanh thu, khách hàng hoặc hợp
                 
                 status = result.get("status")
                 answer = result.get("answer", "Xin lỗi, tôi gặp sự cố khi xử lý.")
+                formatted_results = result.get("results", {})
                 
                 # Update session state with new trace data
                 st.session_state.latest_trace = result.get("trace_log", [])
@@ -146,10 +147,42 @@ if prompt := st.chat_input("Hỏi tôi về doanh thu, khách hàng hoặc hợp
                         st.toast("Security Alert!", icon="⚠️")
                     else:
                         st.markdown(answer)
+                        
+                        # Hiển thị bảng dữ liệu nếu có
+                        if formatted_results and isinstance(formatted_results, dict):
+                            data_rows = formatted_results.get("data", [])
+                            if data_rows:
+                                st.divider()
+                                st.subheader("📊 Kết quả Chi Tiết")
+                                try:
+                                    import pandas as pd
+                                    df = pd.DataFrame(data_rows)
+                                    st.dataframe(df, use_container_width=True, height=400)
+                                    
+                                    # Export options
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        csv_data = df.to_csv(index=False).encode('utf-8')
+                                        st.download_button("📥 CSV", csv_data, "results.csv", "text/csv")
+                                    with col2:
+                                        st.caption(f"Total: {formatted_results.get('total_rows', 0)} row(s)")
+                                except Exception as e:
+                                    st.warning(f"Không thể hiển thị bảng: {e}")
                     
                     if "sql_query" in result and result["sql_query"]:
                         with st.expander("🛠️ Generated SQL Query"):
                             st.code(result["sql_query"], language="sql")
+                    
+                    # Phase 10: User Feedback Integration
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        if st.button("👍 Good", key=f"good_{len(st.session_state.messages)}"):
+                            st.success("Thank you for the feedback!")
+                            # TODO: Send feedback to backend for learning improvement
+                    with col2:
+                        if st.button("👎 Bad", key=f"bad_{len(st.session_state.messages)}"):
+                            st.error("Sorry for the inconvenience. We'll improve!")
+                            # TODO: Send feedback to backend for learning improvement
                 
                 st.session_state.messages.append({"role": "assistant", "content": answer})
             else:

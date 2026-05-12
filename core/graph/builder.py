@@ -1,4 +1,5 @@
 from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
 from core.graph.state import AgentState
 
 from core.agents.ingest_agent import run_ingest_agent
@@ -90,13 +91,15 @@ def reasoning_node(state: AgentState):
     
     query_clean = state.get("query_clean", state.get("query", ""))
     entities = ingest_output.get("entities", {})
+    existing_trace_log = state.get("trace_log", [])
+    existing_trace_details = state.get("trace_details", [])
     
     # Gọi AI Reasoning
     analysis = run_reasoning_agent(query_clean, entities)
     
     return {
-        "trace_log": [f"[Reasoning] AI đã lập luận: {analysis.get('thought_process', '')[:100]}..."],
-        "trace_details": [{
+        "trace_log": existing_trace_log + [f"[Reasoning] AI đã lập luận: {analysis.get('thought_process', '')[:100]}..."],
+        "trace_details": existing_trace_details + [{
             "node": "Reasoning",
             "input": {"query": query_clean, "entities": entities},
             "output": analysis
@@ -125,6 +128,8 @@ def planning_node(state: AgentState):
     
     # Gọi AI Planning (có kèm context lỗi nếu là retry)
     plan_data = run_planning_agent(logic_steps, required_tables, previous_error=previous_error)
+    existing_trace_log = state.get("trace_log", [])
+    existing_trace_details = state.get("trace_details", [])
     
     new_retry_count = current_retry + 1 if previous_error else current_retry
     
@@ -132,8 +137,8 @@ def planning_node(state: AgentState):
         "plan": plan_data.get("tasks", []),
         "retry_count": new_retry_count,
         "error": None, # Reset error sau khi đã lập lại kế hoạch
-        "trace_log": [f"[Planning] AI đã lập kế hoạch: {plan_data.get('plan_name', '')}" + (f" (Retry #{new_retry_count})" if previous_error else "")],
-        "trace_details": [{
+        "trace_log": existing_trace_log + [f"[Planning] AI đã lập kế hoạch: {plan_data.get('plan_name', '')}" + (f" (Retry #{new_retry_count})" if previous_error else "")],
+        "trace_details": existing_trace_details + [{
             "node": "Planning",
             "input": {"logic_steps": logic_steps, "tables": required_tables, "previous_error": previous_error},
             "output": plan_data
@@ -151,6 +156,8 @@ def execution_node(state: AgentState):
     plan = state.get("plan", [])
     query_clean = state.get("query_clean", state.get("query", ""))
     cached_sql = state.get("cached_sql")
+    existing_trace_log = state.get("trace_log", [])
+    existing_trace_details = state.get("trace_details", [])
     
     # 1. Lấy SQL từ Cache hoặc Sinh từ Plan
     if cached_sql:
@@ -166,8 +173,8 @@ def execution_node(state: AgentState):
     if not sql:
         return {
             "error": "Không thể tạo mã SQL hợp lệ.",
-            "trace_log": ["⚠️ [Execution] Lỗi: Không có SQL được tạo ra."],
-            "trace_details": [{
+            "trace_log": existing_trace_log + ["⚠️ [Execution] Lỗi: Không có SQL được tạo ra."],
+            "trace_details": existing_trace_details + [{
                 "node": "Execution",
                 "input": {"plan": plan, "cached": bool(cached_sql)},
                 "output": {"status": "error"}
@@ -176,6 +183,8 @@ def execution_node(state: AgentState):
     
     # 2. Thực thi thông qua Tool an toàn
     result = db_query_tool(sql)
+    existing_trace_log = state.get("trace_log", [])
+    existing_trace_details = state.get("trace_details", [])
     
     if result["status"] == "success":
         # 3. Format kết quả cho người dùng
@@ -183,20 +192,34 @@ def execution_node(state: AgentState):
         formatted_results = format_results(db_results, query_clean)
         user_answer = create_answer(query_clean, formatted_results, sql)
         
+        validation = None
+        schema_validation = None
+        context_monitor = state.get("context_monitor")
+        if context_monitor:
+            validation = context_monitor.validate_logic(query_clean, db_results, sql)
+            schema_validation = context_monitor.validate_schema_usage(sql)
+            if validation and not validation.get("is_valid", True):
+                user_answer += "\n\n⚠️ Chú ý: Kết quả có thể không hoàn toàn chính xác. " + \
+                    "Vui lòng kiểm tra lại các trường dữ liệu và câu truy vấn."
+
         return {
             "sql_query": sql,
             "results": db_results,
             "formatted_results": formatted_results,
             "user_answer": user_answer,
+            "validation": validation,
+            "schema_validation": schema_validation,
             "error": None,
-            "trace_log": [f"[Execution] SQL đã chạy thành công: {execution_data.get('explanation', '')[:100]}..."],
-            "trace_details": [{
+            "trace_log": existing_trace_log + [f"[Execution] SQL đã chạy thành công: {execution_data.get('explanation', '')[:100] if not cached_sql else 'Reused from cache'}..."],
+            "trace_details": existing_trace_details + [{
                 "node": "Execution",
                 "input": {"sql": sql, "plan": plan},
                 "output": {
                     "status": "success",
                     "rows": result.get("row_count", 0),
-                    "explanation": execution_data.get("explanation")
+                    "explanation": execution_data.get("explanation"),
+                    "validation": validation,
+                    "schema_validation": schema_validation
                 }
             }]
         }
@@ -209,8 +232,8 @@ def execution_node(state: AgentState):
             "results": [],
             "formatted_results": {"status": "error", "message": error_msg},
             "user_answer": f"⚠️ Lỗi: {error_msg}",
-            "trace_log": [f"[Execution] ⚠️ LỖI TRUY VẤN: {error_msg}"],
-            "trace_details": [{
+            "trace_log": existing_trace_log + [f"[Execution] ⚠️ LỖI TRUY VẤN: {error_msg}"],
+            "trace_details": existing_trace_details + [{
                 "node": "Execution",
                 "input": {"sql": sql},
                 "output": {"status": "error", "reason": error_msg}
@@ -222,9 +245,13 @@ def learning_node(state: AgentState):
     query = state.get("query_clean")
     sql = state.get("sql_query")
     results = state.get("results", [])
+    existing_trace_log = state.get("trace_log", [])
+    existing_trace_details = state.get("trace_details", [])
     
     if not query or not sql:
-        return {"trace_log": ["[Learning] Bỏ qua vì thiếu thông tin query/sql."]}
+        return {
+            "trace_log": existing_trace_log + ["[Learning] Bỏ qua vì thiếu thông tin query/sql."]
+        }
 
     # Thực hiện học từ query thành công
     learning_result = run_learning_agent(
@@ -236,9 +263,10 @@ def learning_node(state: AgentState):
     
     msg = learning_result.get("message", "Đã cập nhật query pattern.")
     
+    # Merge trace data thay vì replace
     return {
-        "trace_log": [f"🧠 [Learning] {msg}"],
-        "trace_details": [{
+        "trace_log": existing_trace_log + [f"🧠 [Learning] {msg}"],
+        "trace_details": existing_trace_details + [{
             "node": "Learning",
             "input": {"query": query, "results_count": len(results)},
             "output": learning_result
@@ -260,6 +288,9 @@ def should_retry(state: AgentState):
     return "end"
 
 def build_graph():
+    # Configure checkpointer for session persistence
+    checkpointer = MemorySaver()
+    
     builder = StateGraph(AgentState)
     
     builder.add_node("ingest", ingest_node)
@@ -296,7 +327,7 @@ def build_graph():
     
     builder.add_edge("learning", END)
     
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 # Compile the graph
 graph = build_graph()

@@ -27,9 +27,9 @@ TRẢ VỀ JSON (không markdown):
 
     try:
         response = completion(
-            model=os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash"),
+            model=os.getenv("GROQ_MODEL", "groq/llama-3.3-70b-versatile"),
             messages=[{"role": "system", "content": prompt}],
-            api_key=os.getenv("GEMINI_API_KEY"),
+            api_key=os.getenv("GROQ_API_KEY"),
             response_format={ "type": "json_object" }
         )
         
