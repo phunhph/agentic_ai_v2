@@ -1,23 +1,23 @@
 # Phase 6 To-Do: ReasoningAgent Layer (The Thinker)
 
 ## Core Logic
-- [ ] Implement `reasoning_agent_node`
-- [ ] Connect Groq Llama3
-- [ ] Parse structured JSON
-- [ ] Append trace logs
+- [x] Implement `reasoning_agent_node`
+- [x] Connect Groq Llama3 (via litellm)
+- [x] Parse structured JSON
+- [x] Append trace logs
 
 ## Query Reasoning
-- [ ] Decompose nested queries
-- [ ] Detect required tables
-- [ ] Infer JOIN relationships
-- [ ] Build execution steps
+- [x] Decompose nested queries
+- [x] Detect required tables (via schema awareness)
+- [x] Infer JOIN relationships
+- [x] Build execution steps (logic_steps)
 
 ## Chain-of-Thought
-- [ ] Generate explainable reasoning
-- [ ] Save thought_process
-- [ ] Display reasoning in UI
+- [x] Generate explainable reasoning (thought_process)
+- [x] Save thought_process in trace_details
+- [x] Display reasoning in UI (already handled by generic details viewer)
 
 ## Integration
-- [ ] Pass logic_plan to PlanningAgent
-- [ ] Maintain AgentState consistency
-- [ ] Handle nested queries correctly
+- [x] Pass logic_plan to PlanningAgent (via trace_details)
+- [x] Maintain AgentState consistency
+- [x] Handle nested queries correctly

@@ -1,79 +1,58 @@
-import psycopg2
-import os
-import uuid
-from datetime import datetime
-from dotenv import load_dotenv
+from core.utils.db import db_manager
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
 
-load_dotenv()
+class SQLInput(BaseModel):
+    sql_command: str = Field(description="Valid SELECT SQL command")
 
-FORBIDDEN_KEYWORDS = ["drop", "delete", "truncate", "update", "alter", "create", "grant"]
+FORBIDDEN_KEYWORDS = [
+    "drop", "delete", "truncate", "update", "alter", 
+    "create", "grant", "revoke", "insert", "into"
+]
 
-def validate_sql(sql_query: str) -> bool:
-    """
-    Basic SQL Validation: Only allow SELECT queries and block forbidden keywords.
-    """
-    query = sql_query.lower().strip()
-    if not query.startswith("select"):
-        return False
-    if any(keyword in query for keyword in FORBIDDEN_KEYWORDS):
-        return False
-    return True
+def execute_business_query(sql_command: str) -> Dict[str, Any]:
+    """Thực thi câu lệnh SQL SELECT an toàn với agent_user thông qua db_manager"""
+    query_lower = sql_command.lower().strip()
 
-def execute_business_query(sql_query: str, agent_name: str = "ExecutionAgent"):
-    """
-    Executes a SELECT query safely and logs the action to audit_zone.
-    """
-    if not validate_sql(sql_query):
-        return {"status": "error", "message": "Query rejected by security policy (Only SELECT allowed)."}
+    # 1. Chỉ cho phép SELECT
+    if not query_lower.startswith("select"):
+        return {
+            "status": "error",
+            "message": "Security Error: Only SELECT queries are allowed."
+        }
 
-    conn = None
+    # 2. Chặn từ khóa nguy hiểm
+    if any(word in query_lower for word in FORBIDDEN_KEYWORDS):
+        return {
+            "status": "error",
+            "message": "Security Error: Bạn không có quyền thực hiện các thao tác thay đổi dữ liệu."
+        }
+
     try:
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            database=os.getenv("DB_NAME", "agentic_ai"),
-            user=os.getenv("DB_USER", "agent_user"),
-            password=os.getenv("DB_PASSWORD", "secure_password"),
-            port=os.getenv("DB_PORT", "5432")
-        )
-        cur = conn.cursor()
-        
-        start_time = datetime.now()
-        cur.execute(sql_query)
-        results = cur.fetchall()
-        columns = [desc[0] for desc in cur.description]
-        end_time = datetime.now()
-        
-        latency = int((end_time - start_time).total_seconds() * 1000)
-        
-        # Format results
-        data = [dict(zip(columns, row)) for row in results]
-        
-        # Log to audit_zone
-        log_audit(cur, agent_name, sql_query, "success", latency)
-        conn.commit()
-        
-        return {"status": "success", "results": data, "latency": latency}
-        
-    except Exception as e:
-        if conn:
-            cur = conn.cursor()
-            log_audit(cur, agent_name, sql_query, f"error: {str(e)}", 0)
-            conn.commit()
-        return {"status": "error", "message": str(e)}
-    finally:
-        if conn:
-            conn.close()
+        # Sử dụng db_manager với use_agent=True để dùng tài khoản giới hạn
+        with db_manager.get_cursor(use_agent=True) as cur:
+            cur.execute(sql_command)
+            
+            if cur.description:
+                columns = [desc[0] for desc in cur.description]
+                rows = cur.fetchall()
+                results = [dict(zip(columns, row)) for row in rows]
+                
+                return {
+                    "status": "success",
+                    "results": results,
+                    "row_count": len(results)
+                }
+            else:
+                return {"status": "success", "results": [], "row_count": 0}
 
-def log_audit(cur, agent_name: str, query: str, status: str, latency: int):
-    """
-    Saves the execution log into audit_zone.agent_trace_logs.
-    """
-    trace_id = str(uuid.uuid4())
-    try:
-        cur.execute("""
-            INSERT INTO audit_zone.agent_trace_logs 
-            (trace_id, agent_name, sql_query, execution_status, latency_ms)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (trace_id, agent_name, query, status, latency))
     except Exception as e:
-        print(f"Audit Logging Failed: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Database Error: {str(e)}"
+        }
+
+if __name__ == "__main__":
+    # Test safe query
+    print("Testing safe SELECT...")
+    print(execute_business_query("SELECT * FROM hbl_account LIMIT 1"))

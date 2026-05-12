@@ -1,17 +1,4 @@
-# core/agents/reasoning.py
-from litellm import completion
-import json
+# Wrapper để export reasoning_agent_node
+from core.graph.builder import reasoning_node as reasoning_agent_node
 
-def reasoning_agent_node(state):
-    """
-    ReasoningAgent: The Thinker, Task Decomposition
-    """
-    print("--- REASONING ---")
-    
-    new_trace = "[Reasoning] Logic decomposed and JOIN paths identified."
-    
-    return {
-        "logic_plan": {},
-        "trace_log": [new_trace],
-        "next_step": "planning"
-    }
+__all__ = ["reasoning_agent_node"]

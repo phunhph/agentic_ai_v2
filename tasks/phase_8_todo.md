@@ -1,23 +1,23 @@
 # Phase 8 To-Do: ExecutionAgent Layer (The Doer)
 
 ## Core Execution
-- [ ] Implement `execution_agent_node`
-- [ ] Connect Groq Llama3
-- [ ] Integrate SQL tool execution
-- [ ] Handle task-by-task execution
+- [x] Implement `execution_agent_node`
+- [x] Connect Groq Llama3 (Llama 3.3 70B)
+- [x] Integrate SQL tool execution (`db_query_tool`)
+- [x] Handle task-by-task execution (via plan synthesis)
 
 ## Error Handling
-- [ ] Capture Postgres errors
-- [ ] Retry failed SQL
-- [ ] Re-generate query
-- [ ] Loop back to PlanningAgent
+- [x] Capture Postgres errors
+- [x] Retry failed SQL (via Self-healing loop)
+- [x] Re-generate query
+- [x] Loop back to PlanningAgent
 
 ## Self-Healing
-- [ ] Detect invalid columns
-- [ ] Fix schema mismatch
-- [ ] Re-execute automatically
+- [x] Detect invalid columns
+- [x] Fix schema mismatch (via AI feedback)
+- [x] Re-execute automatically
 
 ## Observability
-- [ ] Trace SQL in UI
-- [ ] Log execution status
-- [ ] Show success/failure steps
+- [x] Trace SQL in UI
+- [x] Log execution status
+- [x] Show success/failure steps

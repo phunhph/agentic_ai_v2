@@ -1,9 +1,10 @@
-from typing import TypedDict, List, Annotated
+from typing import TypedDict, List, Annotated, Dict, Any
 import operator
 
 class AgentState(TypedDict):
     # User input
     query: str
+    query_clean: str
     
     # Session
     thread_id: str
@@ -19,7 +20,8 @@ class AgentState(TypedDict):
 
     # Final SQL generated
     sql_query: str
-
+    cached_sql: str # Phase 9: SQL from semantic cache
+    
     # Database results
     results: List
 
@@ -31,3 +33,4 @@ class AgentState(TypedDict):
     
     # Error handling
     error: str
+    retry_count: int

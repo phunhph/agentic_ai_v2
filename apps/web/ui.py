@@ -132,6 +132,7 @@ if prompt := st.chat_input("Hỏi tôi về doanh thu, khách hàng hoặc hợp
                     st.code(response.text)
                     st.stop()
                 
+                status = result.get("status")
                 answer = result.get("answer", "Xin lỗi, tôi gặp sự cố khi xử lý.")
                 
                 # Update session state with new trace data
@@ -140,7 +141,11 @@ if prompt := st.chat_input("Hỏi tôi về doanh thu, khách hàng hoặc hợp
                 
                 # Display assistant message
                 with st.chat_message("assistant"):
-                    st.markdown(answer)
+                    if status == "security_error":
+                        st.warning(answer)
+                        st.toast("Security Alert!", icon="⚠️")
+                    else:
+                        st.markdown(answer)
                     
                     if "sql_query" in result and result["sql_query"]:
                         with st.expander("🛠️ Generated SQL Query"):
@@ -156,17 +161,38 @@ if prompt := st.chat_input("Hỏi tôi về doanh thu, khách hàng hoặc hợp
 with trace_container:
     if st.session_state.latest_trace:
         # Map logs to details by index
-        for i, log in enumerate(st.session_state.latest_trace):
-            detail = st.session_state.latest_details[i] if i < len(st.session_state.latest_details) else {}
-            
-            with st.expander(f"🔍 {log}"):
-                if detail:
-                    st.markdown("**📥 Input:**")
-                    st.json(detail.get("input", "N/A"))
-                    st.markdown("**📤 Output:**")
-                    st.json(detail.get("output", "N/A"))
-                else:
-                    st.write("Không có dữ liệu chi tiết.")
+        for step in reversed(st.session_state.latest_details):
+            node_name = step.get("node", "Unknown")
+            with st.expander(f"📍 Step: {node_name}", expanded=(node_name == "Ingest")):
+                # Hiển thị Input/Output chung
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.caption("📥 Input")
+                    st.json(step.get("input", {}))
+                with col2:
+                    st.caption("📤 Output")
+                    st.json(step.get("output", {}))
+                
+                # Hiển thị đặc biệt cho Ingest (Phase 5)
+                if node_name == "Ingest":
+                    st.divider()
+                    st.subheader("Gatekeeper Analysis")
+                    out = step.get("output", {})
+                    sec_status = out.get("security_status", "SAFE")
+                    
+                    if sec_status == "SAFE":
+                        st.success(f"Security: {sec_status}")
+                    else:
+                        st.error(f"Security: {sec_status}")
+                    
+                    entities = out.get("entities", {})
+                    if entities:
+                        st.write("**Extracted Entities:**")
+                        for k, v in entities.items():
+                            if v: st.write(f"- {k.capitalize()}: `{v}`")
+                    
+                    if out.get("is_ambiguous"):
+                        st.warning("⚠️ Câu hỏi này có vẻ mơ hồ.")
     else:
         st.write("Chưa có tiến trình nào.")
 
