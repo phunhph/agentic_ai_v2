@@ -7,7 +7,7 @@ import os
 # Add root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 
 def run_phase_3_test():
     print("\n" + "="*50)

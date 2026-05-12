@@ -1,5 +1,5 @@
-from core.tools.sql_executor import execute_business_query
-from core.tools.schema_tools import get_db_schema
+from core.tools.db.sql_executor import execute_business_query
+from core.tools.db.schema_tools import get_db_schema
 
 def db_query_tool(sql_command: str):
     """Tool để thực thi truy vấn SQL (Chỉ SELECT)"""

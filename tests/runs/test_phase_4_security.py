@@ -4,8 +4,8 @@ import os
 # Add root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from core.tools.sql_executor import execute_business_query
-from core.tools.schema_tools import get_db_schema
+from core.tools.db.sql_executor import execute_business_query
+from core.tools.db.schema_tools import get_db_schema
 
 def test_phase_4_security():
     print("="*50)

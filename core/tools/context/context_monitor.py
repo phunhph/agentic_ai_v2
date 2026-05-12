@@ -7,49 +7,63 @@ from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime, timedelta
 
 
+from core.utils.infra.db import db_manager
+import json
+
 class ContextMonitor:
-    """Quản lý context trong multi-turn conversations"""
+    """Quản lý context trong multi-turn conversations (Persistent via DB)"""
     
     def __init__(self, session_id: str):
         self.session_id = session_id
-        self.conversation_history: List[Dict] = []
         self.named_entities: Dict[str, str] = {}  # Store extracted entities
         self.context_window_size = 5  # Số lượt trò chuyện để nhớ
         self.created_at = datetime.now()
     
+    def _fetch_history(self) -> List[Dict[str, Any]]:
+        """Lấy lịch sử hội thoại từ database"""
+        history = []
+        try:
+            with db_manager.get_cursor() as cur:
+                # Lấy các lượt chat chính (Ingest node thường chứa query gốc)
+                cur.execute("""
+                    SELECT input_payload, output_payload, createdon 
+                    FROM audit_zone.agent_logs 
+                    WHERE session_id = %s AND node_name = 'LangGraph_Orchestrator'
+                    ORDER BY createdon DESC 
+                    LIMIT %s
+                """, (self.session_id, self.context_window_size))
+                
+                rows = cur.fetchall()
+                for input_p, output_p, createdon in reversed(rows):
+                    history.append({
+                        "timestamp": createdon.isoformat(),
+                        "user_query": input_p.get("query", "") if isinstance(input_p, dict) else json.loads(input_p).get("query", ""),
+                        "system_response": output_p if isinstance(output_p, dict) else json.loads(output_p)
+                    })
+        except Exception as e:
+            print(f"Error fetching history: {e}")
+        return history
+
     def add_turn(self, user_query: str, system_response: Dict[str, Any]):
-        """Lưu một lượt hội thoại"""
-        turn = {
-            "timestamp": datetime.now().isoformat(),
-            "user_query": user_query,
-            "system_response": system_response,
-            "resolved_entities": {}
-        }
-        self.conversation_history.append(turn)
+        """
+        Lưu một lượt hội thoại. 
+        Lưu ý: App.py đã gọi db_manager.log_agent_interaction cho Orchestrator, 
+        nên không cần insert thủ công ở đây nếu session_id khớp.
+        """
+        pass
     
     def resolve_coreferences(self, query: str) -> str:
-        """
-        Giải quyết các coreferences (đại từ) trong query
-        
-        Ví dụ: "HBL account có bao nhiêu hợp đồng?" -> Store: HBL account
-        Tiếp theo: "Hợp đồng của nó tháng 5 thế nào?" -> Resolve: "Hợp đồng của HBL account tháng 5 thế nào?"
-        """
+        """Giải quyết các đại từ (nó, đó,...) dựa trên lịch sử hội thoại"""
         resolved_query = query
         
         # Coreference patterns
-        pronouns = {
-            r'\bnó\b': None,  # it
-            r'\bnhững cái\b': None,  # those/these
-            r'\bđó\b': None,  # that
-            r'\bnhử\b': None,  # those
-        }
+        pronouns = [r'\bnó\b', r'\bđó\b', r'\bchúng\b', r'\bcái đó\b']
         
-        # Tìm entity cuối cùng được mention
-        last_entity = self._get_last_entity()
+        history = self._fetch_history()
+        last_entity = self._get_last_entity(history)
         
         if last_entity:
-            # Replace pronouns với entity
-            for pronoun_pattern, _ in pronouns.items():
+            for pronoun_pattern in pronouns:
                 resolved_query = re.sub(
                     pronoun_pattern,
                     last_entity,
@@ -68,88 +82,48 @@ class ContextMonitor:
             "keywords": []
         }
         
-        # Company names (pattern: words before "account", "công ty", etc.)
-        company_pattern = r'(\w+)\s+(?:account|công ty|công|account)'
+        # Simple extraction logic (improved)
+        company_pattern = r'(\w+)\s+(?:account|công ty|đối tác)'
         for match in re.finditer(company_pattern, query, re.IGNORECASE):
             entities["companies"].append(match.group(1))
         
-        # Dates (pattern: month/year or specific dates)
         date_pattern = r'(tháng\s+\d+|ngày\s+\d+|năm\s+\d+)'
         for match in re.finditer(date_pattern, query, re.IGNORECASE):
             entities["dates"].append(match.group(1))
-        
-        # Numbers
-        number_pattern = r'\d+(?:\.\d+)?'
-        for match in re.finditer(number_pattern, query):
-            entities["numbers"].append(match.group())
-        
-        # Store first/main entity
+            
         if entities["companies"]:
             self.named_entities["main_entity"] = entities["companies"][0]
         
         return entities
     
     def validate_logic(self, query: str, results: List[Dict], sql: str) -> Dict[str, Any]:
-        """
-        Kiểm tra tính logic của results so với query
-        
-        Phát hiện hallucination: result không match với SQL hoặc query intent
-        """
+        """Kiểm tra logic kết quả (Hallucination Guard)"""
         validation = {
             "is_valid": True,
             "issues": [],
-            "confidence_score": 1.0
+            "confidence_score": 1.0,
+            "hallucination_detected": False
         }
         
-        # Check 1: Results count
-        if len(results) == 0 and "danh sách" in query.lower():
-            validation["issues"].append("Expected results but got empty")
-            validation["confidence_score"] -= 0.2
-        
-        # Check 2: Column presence
-        if results and "SELECT" in sql.upper():
-            sql_columns = self._extract_sql_columns(sql)
-            result_columns = set(results[0].keys()) if results else set()
-            
-            if not result_columns:
-                validation["issues"].append("Results missing expected columns")
+        if not results:
+            if any(k in query.lower() for k in ["liệt kê", "danh sách", "show", "list"]):
+                validation["issues"].append("⚠️ Kết quả rỗng mặc dù người dùng yêu cầu liệt kê.")
                 validation["confidence_score"] -= 0.3
         
-        # Check 3: Data type sanity
-        for row in results[:3]:  # Check first 3 rows
+        # Check for suspicious values in results
+        for row in results[:5]: 
             for key, value in row.items():
                 if not self._is_sane_value(key, value):
-                    validation["issues"].append(f"Suspicious value in {key}: {value}")
-                    validation["confidence_score"] -= 0.1
+                    validation["issues"].append(f"🚫 Suspicious value in {key}: {value}")
+                    validation["hallucination_detected"] = True
+                    validation["confidence_score"] -= 0.2
         
         validation["is_valid"] = validation["confidence_score"] >= 0.7
         return validation
     
-    def get_context_summary(self) -> Dict[str, Any]:
-        """Lấy tóm tắt context hiện tại"""
-        recent_turns = self.conversation_history[-self.context_window_size:]
-        
-        return {
-            "session_id": self.session_id,
-            "turn_count": len(self.conversation_history),
-            "recent_turns": len(recent_turns),
-            "named_entities": self.named_entities,
-            "session_age_seconds": (datetime.now() - self.created_at).total_seconds(),
-            "last_interaction": self.conversation_history[-1]["timestamp"] if self.conversation_history else None
-        }
-    
-    def clear_old_context(self, max_age_hours: int = 24):
-        """Xóa context cũ"""
-        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
-        self.conversation_history = [
-            turn for turn in self.conversation_history
-            if datetime.fromisoformat(turn["timestamp"]) > cutoff_time
-        ]
-    
-    # Private helpers
-    def _get_last_entity(self) -> Optional[str]:
-        """Lấy entity được mention cuối cùng"""
-        for turn in reversed(self.conversation_history):
+    def _get_last_entity(self, history: List[Dict]) -> Optional[str]:
+        """Lấy entity được mention cuối cùng trong lịch sử"""
+        for turn in reversed(history):
             entities = self.extract_entities(turn["user_query"])
             if entities["companies"]:
                 return entities["companies"][0]
@@ -198,6 +172,7 @@ class ContextMonitor:
                 validation["is_valid"] = False
         
         return validation
+    def _is_sane_value(self, column_name: str, value: Any) -> bool:
         """Check nếu giá trị hợp lý cho column type"""
         if value is None:
             return True  # NULL is always valid
@@ -206,11 +181,7 @@ class ContextMonitor:
         
         # Check for common hallucinations
         if any(hallucination in value_str for hallucination in [
-            "i don't know",
-            "không biết",
-            "hallucinated",
-            "error",
-            "undefined"
+            "i don't know", "không biết", "hallucinated", "error", "undefined"
         ]):
             return False
         

@@ -2,7 +2,7 @@ import os
 import json
 import re
 from litellm import completion
-from core.tools.schema_tools import get_db_schema
+from core.tools.db.schema_tools import get_db_schema
 from core.prompts.security_rules import SECURITY_SYSTEM_PROMPT
 
 def run_ingest_agent(query: str):

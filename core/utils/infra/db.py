@@ -1,5 +1,6 @@
 import psycopg2
 import os
+import json
 from contextlib import contextmanager
 from dotenv import load_dotenv
 
@@ -19,9 +20,10 @@ class DatabaseManager:
         
         # Cấu hình cho Agent (Restricted User - Phase 4)
         self.agent_config = self.default_config.copy()
+        # Đảm bảo dùng password từ .env nếu có, thay vì hardcode 'sa'
         self.agent_config.update({
-            "user": "postgres",
-            "password": "sa"
+            "user": os.getenv("DB_USER", "postgres"),
+            "password": self.default_config["password"]
         })
 
     @contextmanager
@@ -50,6 +52,33 @@ class DatabaseManager:
                 yield cur
             finally:
                 cur.close()
+
+    def log_agent_interaction(self, session_id: str, node: str, input_data: dict, output_data: dict, usage: dict = None):
+        """Phase 15: Lưu vết thực thi và token usage vào audit_zone."""
+        try:
+            with self.get_cursor() as cur:
+                cur.execute("""
+                    INSERT INTO audit_zone.agent_logs 
+                    (session_id, node_name, input_payload, output_payload, token_count, cost_usd)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    session_id, node, json.dumps(input_data), json.dumps(output_data),
+                    usage.get("total_tokens", 0) if usage else 0,
+                    usage.get("total_cost", 0.0) if usage else 0.0
+                ))
+        except Exception as e:
+            print(f"Failed to log interaction: {e}")
+
+    def store_feedback(self, session_id: str, rating: int, comment: str = None):
+        """Phase 15: Lưu feedback người dùng."""
+        try:
+            with self.get_cursor() as cur:
+                cur.execute("""
+                    INSERT INTO audit_zone.user_feedback (session_id, rating, comment)
+                    VALUES (%s, %s, %s)
+                """, (session_id, rating, comment))
+        except Exception as e:
+            print(f"Failed to store feedback: {e}")
 
 # Singleton instance
 db_manager = DatabaseManager()

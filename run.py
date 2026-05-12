@@ -12,45 +12,53 @@ def run_system():
     env["PYTHONPATH"] = os.getcwd()
 
     print("\n" + "="*50)
-    print("🚀 ĐỐI TƯỢNG: HỆ THỐNG AGENTIC CRM ĐANG KHỞI ĐỘNG")
+    print("STARTING AGENTIC CRM SYSTEM")
     print("="*50 + "\n")
 
     # 1. Khởi chạy Flask API (Backend)
-    print("📡 Bước 1: Khởi động Backend API (Flask)...")
+    print("Step 1: Starting Backend API (Flask)...")
     api_process = subprocess.Popen([sys.executable, "apps/api/app.py"], env=env)
 
     # Đợi một chút để API khởi động xong
-    time.sleep(2)
+    time.sleep(3)
 
     # 2. Khởi chạy Streamlit UI (Frontend)
-    print("💻 Bước 2: Khởi động Frontend UI (Streamlit)...")
-    # Chúng ta giả định cổng mặc định là 8501
+    print("Step 2: Starting Frontend UI (Streamlit)...")
     ui_url = "http://localhost:8501"
     
     try:
-        # Khởi chạy streamlit
-        ui_process = subprocess.Popen(["streamlit", "run", "apps/web/ui.py", "--server.port", "8501"], env=env)
+        # Sử dụng python -m streamlit để đảm bảo chạy đúng môi trường
+        ui_process = subprocess.Popen([sys.executable, "-m", "streamlit", "run", "apps/web/ui.py", "--server.port", "8501"], env=env)
         
         # Đợi Streamlit khởi động rồi tự động mở trình duyệt
         time.sleep(5)
-        print(f"\n🌍 Đang mở giao diện tại: {ui_url}")
+        print(f"\nOpening UI at: {ui_url}")
         webbrowser.open(ui_url)
         
-        print("\n✅ HỆ THỐNG ĐÃ SẴN SÀNG!")
-        print(f"👉 Giao diện người dùng: {ui_url}")
-        print(f"👉 Backend API: http://localhost:5000")
-        print("\nNhấn Ctrl+C để dừng toàn bộ hệ thống.")
+        print("\nSYSTEM IS READY!")
+        print(f"User Interface: {ui_url}")
+        print(f"Backend API: http://localhost:5000")
+        print("\nPress Ctrl+C to stop.")
 
         # Giữ script chạy để quản lý các process
-        ui_process.wait()
+        while True:
+            time.sleep(1)
+            if api_process.poll() is not None:
+                print("Backend API stopped unexpectedly.")
+                break
+            if ui_process.poll() is not None:
+                print("Frontend UI stopped unexpectedly.")
+                break
+                
     except KeyboardInterrupt:
-        print("\n🛑 Đang dừng toàn bộ hệ thống...")
-        api_process.terminate()
-        ui_process.terminate()
-        print("👋 Đã dừng thành công.")
+        print("\nStopping system...")
     except Exception as e:
-        print(f"❌ Có lỗi xảy ra: {e}")
+        print(f"Error occurred: {e}")
+    finally:
         api_process.terminate()
+        if 'ui_process' in locals():
+            ui_process.terminate()
+        print("Goodbye!")
 
 if __name__ == "__main__":
     run_system()

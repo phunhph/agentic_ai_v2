@@ -1,4 +1,4 @@
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 
 def setup_database_security():
     """Thiết lập bảo mật Database (Phase 4) sử dụng db_manager"""

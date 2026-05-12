@@ -6,7 +6,7 @@ import random
 import uuid
 import string
 from datetime import datetime, timedelta
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 
 def get_random_string(length=8):
     return ''.join(random.choices(string.ascii_letters, k=length))
@@ -20,13 +20,13 @@ def seed_business_data():
             # 1. Seed systemuser
             print("Seeding systemuser...")
             users = [
-                (str(uuid.uuid4()), 'admin', 'Administrator'),
-                (str(uuid.uuid4()), 'sales_mgr', 'Sales Manager'),
-                (str(uuid.uuid4()), 'am_1', 'Account Manager 1'),
-                (str(uuid.uuid4()), 'am_2', 'Account Manager 2'),
-                (str(uuid.uuid4()), 'bd_1', 'Business Development 1')
+                (str(uuid.uuid4()), 'Administrator'),
+                (str(uuid.uuid4()), 'Sales Manager'),
+                (str(uuid.uuid4()), 'Account Manager 1'),
+                (str(uuid.uuid4()), 'Account Manager 2'),
+                (str(uuid.uuid4()), 'Business Development 1')
             ]
-            cur.executemany("INSERT INTO systemuser (systemuserid, domainname, fullname) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", users)
+            cur.executemany("INSERT INTO systemuser (systemuserid, fullname) VALUES (%s, %s) ON CONFLICT DO NOTHING", users)
             
             # Get user IDs for relations
             cur.execute("SELECT systemuserid FROM systemuser")
@@ -62,10 +62,10 @@ def seed_business_data():
             contacts = []
             for i in range(50):
                 contacts.append((
-                    str(uuid.uuid4()), f"Contact {i}", f"last_{i}", 
-                    f"contact_{i}@example.com", random.choice(acc_ids)
+                    str(uuid.uuid4()), f"Contact {i} Fullname", 
+                    random.choice(acc_ids)
                 ))
-            cur.executemany("INSERT INTO hbl_contact (hbl_contactid, hbl_contact_firstname, hbl_contact_lastname, hbl_contact_email, hbl_contact_accountid) VALUES (%s, %s, %s, %s, %s)", contacts)
+            cur.executemany("INSERT INTO hbl_contact (hbl_contactid, hbl_contact_name, hbl_contact_accountid) VALUES (%s, %s, %s)", contacts)
 
             # 4. Seed hbl_opportunities
             print("Seeding hbl_opportunities...")
@@ -75,10 +75,9 @@ def seed_business_data():
                 opps.append((
                     opp_id, f"Opportunity {get_random_string(5)}", 
                     random.choice(acc_ids), random.choice(user_ids),
-                    random.randint(10000, 500000), 
-                    datetime.now() + timedelta(days=random.randint(30, 365))
+                    random.randint(10000, 500000)
                 ))
-            cur.executemany("INSERT INTO hbl_opportunities (hbl_opportunitiesid, hbl_opportunities_name, hbl_opportunities_accountid, mc_opportunities_ownerid, hbl_opportunities_estimated_revenue, hbl_opportunities_estimated_close_date) VALUES (%s, %s, %s, %s, %s, %s)", opps)
+            cur.executemany("INSERT INTO hbl_opportunities (hbl_opportunitiesid, hbl_opportunities_name, hbl_opportunities_accountid, mc_opportunities_ownerid, hbl_opportunities_estimated_value) VALUES (%s, %s, %s, %s, %s)", opps)
 
             # Get opp IDs
             cur.execute("SELECT hbl_opportunitiesid FROM hbl_opportunities")

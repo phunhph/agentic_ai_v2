@@ -7,7 +7,7 @@ import uuid
 import string
 from datetime import datetime, timedelta
 import json
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 from psycopg2.extras import execute_values
 
 INDUSTRIES = ["Finance", "Technology", "Healthcare", "Education", "Retail", "Manufacturing", "Energy"]

@@ -1,4 +1,4 @@
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 import time
 import json
 

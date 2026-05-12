@@ -12,25 +12,34 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
+
+from core.utils.logic.json_helper import AgenticJSONEncoder
 
 app = Flask(__name__)
+# Cấu hình JSON Encoder cho Flask 2.2+ / 3.x
+from flask.json.provider import DefaultJSONProvider
 
-def log_to_audit(trace_id, agent_name, provider, input_p, output_p, latency):
-    """Lưu vết vào audit_zone.agent_trace_logs sử dụng db_manager"""
-    try:
-        with db_manager.get_cursor() as cur:
-            cur.execute("""
-                INSERT INTO audit_zone.agent_trace_logs 
-                (trace_id, agent_name, model_provider, input_payload, output_response, latency_ms)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (trace_id, agent_name, provider, Json(input_p), Json(output_p), latency))
-    except Exception as e:
-        print(f"Audit Log Error: {e}")
+class AgenticJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
+from decimal import Decimal
+from datetime import datetime, date
+app.json = AgenticJSONProvider(app)
+
+def log_to_audit(session_id, node, provider, input_p, output_p, latency):
+    """Lưu vết thực thi sử dụng db_manager"""
+    usage = {"total_cost": 0.0, "total_tokens": 0} 
+    db_manager.log_agent_interaction(session_id, node, input_p, output_p, usage)
 
 from core.graph.builder import graph
 
-from core.utils.security import is_jailbreak_attempt
+from core.utils.infra.security import is_jailbreak_attempt
 
 @app.route("/v1/agent/chat", methods=["POST"])
 def chat():
@@ -122,5 +131,5 @@ def health():
     return jsonify({"status": "ok", "service": "agentic-crm-api"})
 
 if __name__ == "__main__":
-    # Chạy trên port 5000 như yêu cầu
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Tắt reloader để tránh lỗi [WinError 10038] trên Windows khi chạy qua subprocess
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)

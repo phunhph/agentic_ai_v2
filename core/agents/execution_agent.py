@@ -2,7 +2,7 @@ import os
 import json
 import re
 from litellm import completion
-from core.tools.schema_tools import get_relevant_schema
+from core.tools.db.schema_tools import get_relevant_schema
 
 def run_execution_agent(plan: list, query_clean: str):
     """

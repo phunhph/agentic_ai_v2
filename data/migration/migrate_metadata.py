@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import json
 import os
-from core.utils.db import db_manager
+from core.utils.infra.db import db_manager
 from psycopg2.extras import execute_values
 
 TYPE_MAP = {
@@ -39,9 +39,11 @@ def migrate_metadata():
                     f_pk = "PRIMARY KEY" if f_name == table["primary_key"] else ""
                     fields.append(f"{f_name} {f_type} {f_null} {f_pk}")
                 
-                create_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(fields)});"
+                # Drop existing table to ensure schema sync (Phase 13 fix)
+                cur.execute(f"DROP TABLE IF EXISTS {table_name} CASCADE;")
+                create_sql = f"CREATE TABLE {table_name} ({', '.join(fields)});"
                 cur.execute(create_sql)
-                print(f"OK: Da tao/kiem tra bang: {table_name}")
+                print(f"OK: Da tao/dong bo bang: {table_name}")
 
             # 2. Import Choice Options vao sys_choice_options
             print("--- Dang import Choice Options ---")
