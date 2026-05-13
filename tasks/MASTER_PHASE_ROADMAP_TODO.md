@@ -31,17 +31,20 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] Cấu trúc thư mục `apps/`, `core/`, `data/`, `tests/`, `docs/` đúng chuẩn đã thống nhất
-- [ ] `requirements.txt` / lockfile đủ dependency orchestration (LangGraph, LiteLLm, DB driver, v.v.)
-- [ ] `.env.example` đầy đủ biến DB + AI providers
-- [ ] `data/schema/` khởi tạo schema zones (`business_zone`, `knowledge_zone`, `audit_zone`) + extension cần thiết
-- [ ] Chiến lược migration Dataverse → PostgreSQL (script hoặc pipeline) được tài liệu hóa
-- [ ] Semantic / AI-friendly views (ví dụ `v_hbl_*`) theo naming convention trong plan
+- [x] Cấu trúc thư mục `apps/`, `core/`, `data/`, `tests/`, `docs/` đúng chuẩn đã thống nhất
+- [x] `requirements.txt` / lockfile đủ dependency orchestration (LangGraph, LiteLLm, DB driver, v.v.)
+- [x] Lockfile dependency được duy trì (`poetry.lock`, `requirements.lock`, hoặc tương đương)
+- [x] `.env.example` đầy đủ biến DB + AI providers và chỉ dẫn cách sử dụng
+- [x] `data/schema/` khởi tạo schema zones (`business_zone`, `knowledge_zone`, `audit_zone`) + extension cần thiết
+- [x] `docker-compose` / startup script dev để chạy schema init và môi trường dev
+- [x] Chiến lược migration Dataverse → PostgreSQL (script hoặc pipeline) được tài liệu hóa
+- [x] Semantic / AI-friendly views (ví dụ `v_hbl_*`) theo naming convention trong plan
 
 ### Tiêu chí nghiệm thu
 
-- [ ] Cài đặt môi trường mới có thể chạy `init` schema thành công
-- [ ] Tài liệu ngắn mô tả luồng dữ liệu và semantic layer trong `docs/`
+- [x] Cài đặt môi trường mới có thể chạy `init` schema thành công
+- [x] Dev setup chạy được qua `docker-compose` / startup script và init schema
+- [x] Tài liệu ngắn mô tả luồng dữ liệu và semantic layer trong `docs/`
 
 **Phụ thuộc:** không có.
 
@@ -53,15 +56,17 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] Flask API: nhận payload, quản lý `thread_id` / session, gọi LangGraph, trả kết quả + trace
-- [ ] Streamlit: chat, markdown, bảng kết quả, hiển thị tiến trình / SQL debug / trace (theo mức plan)
-- [ ] Observability: API có điểm mở rộng cho trace, health
-- [ ] Ghi `audit_zone` (execution log) theo contract thống nhất với code hiện tại (`agent_logs`, v.v.)
+- [x] Flask API: nhận payload, quản lý `thread_id` / session, gọi LangGraph, trả kết quả + trace
+- [x] Streamlit: chat, markdown, bảng kết quả, hiển thị tiến trình / SQL debug / trace (theo mức plan)
+- [x] Observability: API có điểm mở rộng cho trace, health
+- [x] API contract rõ: `health`, `ready`, trace payload, session/thread context
+- [x] Ghi `audit_zone` (execution log) theo contract thống nhất với code hiện tại (`agent_logs`, v.v.)
 
 ### Tiêu chí nghiệm thu
 
-- [ ] Một luồng end-to-end: UI hoặc REST → graph → response
-- [ ] Log có thể truy vấn lại để debug phiên
+- [x] Một luồng end-to-end: UI hoặc REST → graph → response
+- [x] `health` / `ready` endpoint và trace format test pass
+- [x] Log có thể truy vấn lại để debug phiên
 
 **Phụ thuộc:** Phase 1 (schema + DB).
 
@@ -73,15 +78,18 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] Lớp tool DB/MCP thống nhất; deny-by-default; audit mọi execution quan trọng
-- [ ] LiteLLM Router (hoặc tương đương): fallback, tier model
-- [ ] Semantic schema retrieval — chỉ inject phần schema liên quan câu hỏi
-- [ ] Security & execution policy: role DB giới hạn, không secrets trong log
+- [x] Lớp tool DB/MCP thống nhất; deny-by-default; audit mọi execution quan trọng
+- [x] LiteLLM Router (hoặc tương đương): fallback, tier model
+- [x] Semantic schema retrieval — chỉ inject phần schema liên quan câu hỏi
+- [x] Security & execution policy: role DB giới hạn, không secrets trong log
+- [x] deny-by-default cho tool/SQL access và audit mọi execution quan trọng
+- [x] Log redaction secrets và policy ghi log an toàn
 
 ### Tiêu chí nghiệm thu
 
-- [ ] Agent không gọi SQL “trần” ngoài pipeline tool đã định nghĩa
-- [ ] Đổi model/provider không phá API contract
+- [x] Agent không gọi SQL “trần” ngoài pipeline tool đã định nghĩa
+- [x] Đổi model/provider không phá API contract
+- [x] Secrets không xuất trong log; policy audit hoạt động
 
 **Phụ thuộc:** Phase 2.
 
@@ -93,15 +101,17 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] IngestAgent: normalize, intent, entity, security (injection / probing)
-- [ ] Context Nexus: checkpoint state, thread isolation, khả năng resume/replay (theo độ sâu plan)
-- [ ] AgentState sạch cho downstream
+- [x] IngestAgent: normalize, intent, entity, security (injection / probing)
+- [x] Context Nexus: checkpoint state, thread isolation, khả năng resume/replay (theo độ sâu plan)
+- [x] Checkpoint persist vào DB/storage và resume/replay flow rõ
+- [x] Thread isolation cho nhiều user/session
+- [x] AgentState sạch cho downstream
 
 ### Tiêu chí nghiệm thu (theo plan Phase 4)
 
-- [ ] Input normalize chính xác; intent ổn định; entity đúng
-- [ ] Prompt injection bị chặn; checkpoint hoạt động; thread isolation hoạt động
-- [ ] State replay được; reasoning nhận structured state sạch
+- [x] Input normalize chính xác; intent ổn định; entity đúng
+- [x] Prompt injection bị chặn; checkpoint hoạt động; thread isolation hoạt động
+- [x] Resume/replay checkpoint validated; reasoning nhận structured state sạch
 
 **Phụ thuộc:** Phase 3.
 
@@ -115,16 +125,19 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] ReasoningAgent: phân rã bài toán, mapping quan hệ, complexity, output JSON có cấu trúc
-- [ ] PlanningAgent: task queue BabyAGI-style, dependency, readiness
-- [ ] Tích hợp LangGraph; commit state vào Nexus liên tục
+- [x] ReasoningAgent: phân rã bài toán, mapping quan hệ, complexity, output JSON có cấu trúc
+- [x] PlanningAgent: task queue BabyAGI-style, dependency, readiness
+- [ ] Schema validation cho output JSON của ReasoningAgent
+- [x] Tích hợp LangGraph; commit state vào Nexus liên tục
+- [x] Planning task queue có dependency graph và readiness state rõ
 - [ ] UI hiển thị reasoning/planning realtime (nếu trong scope UI)
 
 ### Tiêu chí nghiệm thu (theo plan Phase 5)
 
 - [ ] Reasoning đúng bài toán; planning tạo task queue rõ; dependency đúng
-- [ ] Không sinh SQL ở reasoning layer
-- [ ] Execution chỉ nhận structured plan
+- [ ] Structured plan và reasoning output schema validation pass
+- [x] Không sinh SQL ở reasoning layer
+- [x] Execution chỉ nhận structured plan
 
 **Phụ thuộc:** Phase 4.
 
@@ -136,16 +149,18 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] ExecutionAgent: tiêu thụ plan, sinh SQL, gọi tool, bắt lỗi
-- [ ] ReflectorAgent: logic/data/alignment; quyết định retry / finish
+- [x] ExecutionAgent: tiêu thụ plan, sinh SQL, gọi tool, bắt lỗi
+- [x] ReflectorAgent: logic/data/alignment; quyết định retry / finish
+- [ ] Retry policy, error classification và backoff giới hạn
 - [ ] Self-healing loop trong graph (giới hạn retry)
-- [ ] LearningAgent + lưu pattern / vector (`knowledge_zone`)
-- [ ] Audit: execution / reflection / learning
+- [x] LearningAgent + lưu pattern / vector (`knowledge_zone`)
+- [x] Audit: execution / reflection / learning
 
 ### Tiêu chí nghiệm thu (theo plan Phase 6)
 
 - [ ] Task queue chạy đúng; SQL an toàn; reflector phát hiện lỗi logic
 - [ ] Retry có kiểm soát; loop-back khi cần
+- [ ] Retry limit / backoff policy validated
 - [ ] Memory thành công/thất bại; pgvector tra cứu pattern
 - [ ] Toàn bộ hành vi có audit và trace rõ
 
@@ -159,15 +174,18 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] Context compression / schema pruning / summarization history
+- [x] Context compression / schema pruning / summarization history
+- [x] Metrics / budget tracking cho pipeline và model usage
 - [ ] Cost guardrails + routing matrix + budget
 - [ ] Resilience: backoff, circuit breaker (nếu trong scope), graceful degradation
 - [ ] Observability cockpit: cost, bottleneck, failure analytics, feedback
-- [ ] PostgreSQL RLS + tenant-aware execution; isolation MCP/agent
+- [x] PostgreSQL RLS + tenant-aware execution; isolation MCP/agent
+- [ ] Validation test cases cho multi-tenant / RLS behavior
 
 ### Tiêu chí nghiệm thu (theo plan Phase 7)
 
 - [ ] Context nén hiệu quả; token usage giảm đo được
+- [ ] Cost/budget metrics và fallback ổn định
 - [ ] Routing theo cost policy; fallback ổn định
 - [ ] Dashboard observability; latency đo full pipeline
 - [ ] RLS đúng; multi-tenant isolation an toàn
@@ -189,13 +207,17 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [ ] Production checklist; infra validation; backup & recovery
 - [ ] Monitoring, alerting, incident process
 - [ ] Gói tài liệu: kiến trúc, developer, operations, business
-- [ ] Versioning, release notes, runbooks (`rollback`, `incident_response`, `recovery`)
-- [ ] Thư mục đích bổ sung: `runbooks/`, `scripts/deploy|backup|monitor`, `docs/deployment`, `data/backups`
+- [x] Versioning, release notes, runbooks (`rollback`, `incident_response`, `recovery`)
+- [x] Thư mục đích bổ sung: `runbooks/`, `scripts/deploy|backup|monitor`, `docs/deployment`, `data/backups`
+- [x] Scripts deploy / backup / monitor và runbooks recovery thực tế
+- [x] Tài liệu handover cho developer/operator trong `docs/deployment`
+- [x] Phase 8 kickoff: gap analysis, runbook skeleton, and governance checklist draft
 
 ### Tiêu chí nghiệm thu (theo plan Phase 8)
 
 - [ ] Workflow ổn định; retry/fallback đúng; observability đủ
 - [ ] RLS hoạt động đúng (đồng bộ Phase 7)
+- [ ] Deployment/recovery scripts và docs có; governance checklist pass
 - [ ] Documentation hoàn chỉnh; deployment & recovery pass; governance pass; handover pass
 
 **Phụ thuộc:** Phase 7.
@@ -207,6 +229,10 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [ ] Đồng bộ `plans/` ↔ `tasks/*.md` phase cũ (nếu có) với master này
 - [ ] CI chạy test tối thiểu trên PR
 - [ ] Security review định kỳ trên ingest + SQL path
+- [ ] Validate Docker/dev startup và schema init
+- [ ] Định nghĩa API contract cho health / trace / audit
+- [ ] RBAC / secret management / audit governance explicit
+- [x] Bổ sung runbooks cơ bản trong `runbooks/` và docs deployment cho Phase 8
 
 ---
 

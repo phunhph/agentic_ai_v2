@@ -6,13 +6,15 @@ Chào mừng bạn đến với dự án **Agentic CRM Intelligence System**. Đ
 
 ## 📖 Tài liệu Hướng dẫn (Documentation)
 
-Hệ thống được thiết kế bài bản với bộ tài liệu chi tiết giúp bạn nhanh chóng làm quen:
+Hệ thống có tài liệu Phase 1 và hướng dẫn khởi tạo cơ sở dữ liệu:
 
 | Tài liệu | Đối tượng | Nội dung chính |
 |---|---|---|
-| 🌟 [**Tổng quan Hệ thống**](docs/system_overview.md) | Mọi người | Tầm nhìn, tính năng và cách AI làm việc (Dễ hiểu). |
-| 🏗️ [**Kiến trúc & Luồng xử lý**](docs/architecture_flow.md) | Kỹ thuật | Sơ đồ Mermaid, Cấu trúc thư mục và Luồng Agent. |
-| 🛠️ [**Lộ trình Công nghệ**](docs/tech_stack.md) | Kỹ thuật | Chi tiết các thư viện & LLMs sử dụng theo từng Phase. |
+| 🌟 [**Phase 1 Setup**](docs/phase_1_setup.md) | Kỹ thuật | Khởi tạo DB, semantic schema, migration strategy, và quick start. |
+| 🌟 [**Phase 2 Setup**](docs/phase_2_setup.md) | Kỹ thuật | Flask API, Streamlit UI, observability và audit logging. |
+| 🌟 [**Phase 3 Setup**](docs/phase_3_setup.md) | Kỹ thuật | LLM Router, semantic schema retrieval, MCP tool và security policy. |
+| 🌟 [**Phase 8 Setup**](docs/phase_8_setup.md) | Vận hành | Deployment, backup, recovery, runbooks và governance documentation. |
+| 🌟 [**System Summary**](docs/system_summary.md) | Tổng kết | Tổng quan dự án, cấu trúc, sơ đồ kiến trúc và hướng dẫn chạy. |
 
 ---
 
