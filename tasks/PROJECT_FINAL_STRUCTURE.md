@@ -84,6 +84,7 @@ project-root/
 │   ├── agents/              # Ingest, Reasoning, Planning, Execution, Reflector, Learning, RAG, Commander…
 │   ├── graph/               # LangGraph builder, state, graph settings
 │   ├── prompts/             # Modular prompts, security rules
+│   ├── schemas/             # Pydantic contracts cho reasoning/planning handoff
 │   ├── tools/               # db/, mcp/, context/, formatters/, registry…
 │   ├── monitor/             # Observability UI helpers (cockpit)
 │   ├── models.py            # AgentState & shared types
@@ -99,6 +100,8 @@ project-root/
 ├── plans/                   # Đặc tả theo phase (source cho roadmap)
 ├── tasks/                   # To-do, kiến trúc tóm tắt, checklist vận hành
 ├── tests/                   # unit / integration / runs (mở rộng theo Phase 8)
+│   ├── test_phase5_contracts.py
+│   └── test_phase6_retry_policy.py
 ├── scripts/                 # init DB, verify, deploy helpers
 ├── docs/                    # Kiến trúc, vận hành, bảo mật
 ├── runbooks/                # [đích] incident, rollback, recovery (Phase 8)
@@ -144,6 +147,13 @@ Các module sau có thể tách dần thành package riêng khi ổn định:
 | `data/backups/` | Gắn policy backup DB |
 | RLS multi-tenant toàn bảng | Theo Phase 7 — áp dụng dần trên schema nghiệp vụ |
 | Alembic | Phase 1 đề cập — có thể bổ sung thay cho chỉ `init.sql` |
+
+### 6.1 Cập nhật triển khai mới (đã hoàn thành)
+
+- Bổ sung contract schema ở `core/schemas/agent_contracts.py` để chuẩn hóa output Reasoning/Planning.
+- Runtime hỗ trợ retry/backoff + phân loại lỗi + DLQ record trong `core/graph/langgraph_runtime.py`.
+- UI cập nhật khối realtime state trong `apps/web/streamlit_app.py` để hiển thị state theo vòng đời agent.
+- Test xác nhận contract/retry tại `tests/test_phase5_contracts.py` và `tests/test_phase6_retry_policy.py`.
 
 ---
 

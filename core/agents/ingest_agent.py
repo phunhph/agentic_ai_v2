@@ -29,7 +29,7 @@ class IngestAgent:
         self,
         prompt: str,
         thread_id: str,
-        session_id: str,
+        session_id: str | None = None,
         previous_state: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:

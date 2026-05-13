@@ -1,9 +1,10 @@
 from __future__ import annotations
-import json
+
 import time
 from typing import Any, Dict
 
 from .db import get_connection
+from .json_utils import json_dumps
 
 
 def log_metric(name: str, value: float, labels: Dict[str, Any] | None = None) -> None:
@@ -15,4 +16,4 @@ def log_metric(name: str, value: float, labels: Dict[str, Any] | None = None) ->
     )
     with get_connection() as connection:
         with connection.cursor() as cursor:
-            cursor.execute(query, [name, value, json.dumps(labels), timestamp])
+            cursor.execute(query, [name, value, json_dumps(labels), timestamp])

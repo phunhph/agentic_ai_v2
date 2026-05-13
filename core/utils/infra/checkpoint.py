@@ -1,14 +1,14 @@
 from typing import Any, Dict, List, Optional
-import json
 
 from core.utils.infra.db import get_connection
+from core.utils.infra.json_utils import json_dumps
 
 
 class CheckpointStore:
     def save_state(
         self,
         thread_id: str,
-        session_id: str,
+        session_id: str | None,
         state_data: Dict[str, Any],
         state_type: str = "checkpoint",
         previous_checkpoint_id: Optional[str] = None,
@@ -21,14 +21,14 @@ class CheckpointStore:
                         (thread_id, session_id, checkpoint_data, previous_checkpoint_id, state_type)
                     VALUES (%s, %s, %s, %s, %s)
                     """,
-                    (thread_id, session_id, json.dumps(state_data), previous_checkpoint_id, state_type),
+                    (thread_id, session_id, json_dumps(state_data), previous_checkpoint_id, state_type),
                 )
             conn.commit()
 
     def create_checkpoint(
         self,
         thread_id: str,
-        session_id: str,
+        session_id: str | None,
         checkpoint_data: Dict[str, Any],
         previous_checkpoint_id: Optional[str] = None,
     ) -> None:

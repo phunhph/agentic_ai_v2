@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from core.schemas import ReasoningStateModel
 from core.utils.infra.checkpoint import CheckpointStore
 
 BUSINESS_INTENT_MAP = {
@@ -38,7 +39,7 @@ class ReasoningAgent:
         self,
         prompt: str,
         thread_id: str,
-        session_id: str,
+        session_id: str | None = None,
         ingest_state: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -63,14 +64,16 @@ class ReasoningAgent:
             "created_at": datetime.utcnow().isoformat() + "Z",
         }
 
+        validated_state = ReasoningStateModel.model_validate(state).model_dump(mode="json")
+
         self.store.save_state(
             thread_id=thread_id,
             session_id=session_id,
-            state_data=state,
+            state_data=validated_state,
             state_type="reasoning",
             previous_checkpoint_id=(ingest_state or {}).get("checkpoint_id") if ingest_state else None,
         )
-        return state
+        return validated_state
 
     def _normalize_prompt(self, prompt: str) -> str:
         text = prompt.strip()

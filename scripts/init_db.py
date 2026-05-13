@@ -1,6 +1,8 @@
 """Initialize Phase 1 PostgreSQL schema for Agentic AI."""
 from __future__ import annotations
+import argparse
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -8,6 +10,8 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 load_dotenv(ROOT / ".env")
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -58,12 +62,21 @@ def apply_schema() -> None:
                 ) from exc
 
 
-def main() -> None:
+def main(seed: bool = False) -> None:
     print("Agentic Phase 1 DB initialization")
     create_database()
     apply_schema()
     print("Phase 1 schema initialization complete.")
 
+    if seed:
+        from scripts.seed_data import seed_database
+
+        seed_database()
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Initialize Agentic PostgreSQL schema and optional seed data.")
+    parser.add_argument("--seed", action="store_true", help="Seed the database with sample business and audit data after schema setup.")
+    args = parser.parse_args()
+
+    main(seed=args.seed)

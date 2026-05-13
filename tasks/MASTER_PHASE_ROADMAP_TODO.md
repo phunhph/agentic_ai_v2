@@ -123,23 +123,31 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 **Mục tiêu:** ReasoningAgent + PlanningAgent; không sinh SQL ở tầng reasoning; plan có thứ tự & dependency.
 
+**Điểm nối từ Phase 4:** nhận `AgentState` sạch từ Ingest + Context Nexus (intent/entity/security/checkpoint) và chuẩn hóa thành planning graph cho Execution.
+
 ### Deliverables
 
 - [x] ReasoningAgent: phân rã bài toán, mapping quan hệ, complexity, output JSON có cấu trúc
 - [x] PlanningAgent: task queue BabyAGI-style, dependency, readiness
-- [ ] Schema validation cho output JSON của ReasoningAgent
+- [x] Schema validation cho output JSON của ReasoningAgent
 - [x] Tích hợp LangGraph; commit state vào Nexus liên tục
 - [x] Planning task queue có dependency graph và readiness state rõ
-- [ ] UI hiển thị reasoning/planning realtime (nếu trong scope UI)
+- [x] UI hiển thị reasoning/planning realtime (nếu trong scope UI)
+- [x] Định nghĩa contract handoff Phase 5 → Phase 6 (structured plan schema + execution preconditions)
 
 ### Tiêu chí nghiệm thu (theo plan Phase 5)
 
 - [ ] Reasoning đúng bài toán; planning tạo task queue rõ; dependency đúng
-- [ ] Structured plan và reasoning output schema validation pass
+- [x] Structured plan và reasoning output schema validation pass
 - [x] Không sinh SQL ở reasoning layer
 - [x] Execution chỉ nhận structured plan
+- [x] Có test contract đảm bảo output planner tương thích ExecutionAgent
 
 **Phụ thuộc:** Phase 4.
+
+**Ready cho Phase 6 khi:**
+- [ ] JSON schema của reasoning/planning được version hóa và kiểm thử tự động
+- [ ] Có ít nhất 1 flow E2E chứng minh handoff plan → execution không cần can thiệp thủ công
 
 ---
 
@@ -147,30 +155,41 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 **Mục tiêu:** Thực thi SQL an toàn; Reflector; vòng retry; học từ thành công/thất bại; pgvector.
 
+**Điểm nối từ Phase 5:** tiêu thụ plan có dependency/readiness từ planner, thực thi tuần tự theo task queue và phản hồi trạng thái về Nexus.
+
 ### Deliverables
 
 - [x] ExecutionAgent: tiêu thụ plan, sinh SQL, gọi tool, bắt lỗi
 - [x] ReflectorAgent: logic/data/alignment; quyết định retry / finish
-- [ ] Retry policy, error classification và backoff giới hạn
-- [ ] Self-healing loop trong graph (giới hạn retry)
+- [x] Retry policy, error classification và backoff giới hạn
+- [x] Self-healing loop trong graph (giới hạn retry)
 - [x] LearningAgent + lưu pattern / vector (`knowledge_zone`)
 - [x] Audit: execution / reflection / learning
+- [x] DLQ/failure bucket cho task vượt retry limit để tránh loop vô hạn
+- [x] Chuẩn hóa taxonomy lỗi dùng chung giữa Execution/Reflector/Learning
 
 ### Tiêu chí nghiệm thu (theo plan Phase 6)
 
 - [ ] Task queue chạy đúng; SQL an toàn; reflector phát hiện lỗi logic
-- [ ] Retry có kiểm soát; loop-back khi cần
-- [ ] Retry limit / backoff policy validated
+- [x] Retry có kiểm soát; loop-back khi cần
+- [x] Retry limit / backoff policy validated
 - [ ] Memory thành công/thất bại; pgvector tra cứu pattern
 - [ ] Toàn bộ hành vi có audit và trace rõ
+- [x] Các lỗi vượt ngưỡng retry được chuyển DLQ và có khả năng replay có kiểm soát
 
 **Phụ thuộc:** Phase 5.
+
+**Ready cho Phase 7 khi:**
+- [ ] Có baseline metrics về latency/cost/retry/error-rate cho từng lớp agent
+- [ ] Có dữ liệu thực nghiệm đủ để tối ưu routing/cost ở Phase 7
 
 ---
 
 ## Phase 7 — Lean Optimization & Scalability
 
 **Mục tiêu:** Nén context, cost-aware routing, resilience, observability cockpit, RLS, multi-tenant, DANN/local inference (theo plan).
+
+**Điểm nối từ Phase 6:** dùng baseline hiệu năng + dữ liệu lỗi thực tế để tối ưu cost/routing/resilience mà không phá chất lượng trả lời.
 
 ### Deliverables
 
@@ -181,6 +200,8 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [ ] Observability cockpit: cost, bottleneck, failure analytics, feedback
 - [x] PostgreSQL RLS + tenant-aware execution; isolation MCP/agent
 - [ ] Validation test cases cho multi-tenant / RLS behavior
+- [ ] SLO/SLA mục tiêu (latency, success-rate, cost/query) được định nghĩa và gắn cảnh báo
+- [ ] Kịch bản load test tối thiểu cho single-tenant và multi-tenant
 
 ### Tiêu chí nghiệm thu (theo plan Phase 7)
 
@@ -190,14 +211,21 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [ ] Dashboard observability; latency đo full pipeline
 - [ ] RLS đúng; multi-tenant isolation an toàn
 - [ ] Local DANN / lightweight inference đạt latency mục tiêu (khi triển khai)
+- [ ] SLO được theo dõi liên tục và có cảnh báo khi vượt ngưỡng
 
 **Phụ thuộc:** Phase 6.
+
+**Ready cho Phase 8 khi:**
+- [ ] Các guardrails cost/resilience/tenant được kiểm thử trong môi trường gần production
+- [ ] Có dashboard + alert tối thiểu phục vụ vận hành/governance
 
 ---
 
 ## Phase 8 — Finalization, Governance & Project Closure
 
 **Mục tiêu:** Hardening, bảo mật cuối, RBAC, deploy, backup, tài liệu, handover, đóng dự án vận hành.
+
+**Điểm nối từ Phase 7:** đóng gói các tối ưu và controls thành chuẩn vận hành production (governance + incident readiness + handover).
 
 ### Deliverables
 
@@ -212,6 +240,7 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [x] Scripts deploy / backup / monitor và runbooks recovery thực tế
 - [x] Tài liệu handover cho developer/operator trong `docs/deployment`
 - [x] Phase 8 kickoff: gap analysis, runbook skeleton, and governance checklist draft
+- [ ] Kế hoạch UAT + sign-off checklist giữa Engineering / Ops / Business owner
 
 ### Tiêu chí nghiệm thu (theo plan Phase 8)
 
@@ -219,6 +248,7 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 - [ ] RLS hoạt động đúng (đồng bộ Phase 7)
 - [ ] Deployment/recovery scripts và docs có; governance checklist pass
 - [ ] Documentation hoàn chỉnh; deployment & recovery pass; governance pass; handover pass
+- [ ] Có biên bản sign-off cuối cùng và tiêu chí chuyển giao vận hành được chốt
 
 **Phụ thuộc:** Phase 7.
 
@@ -227,11 +257,12 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 ## Hạng mục xuyên suốt (ongoing)
 
 - [ ] Đồng bộ `plans/` ↔ `tasks/*.md` phase cũ (nếu có) với master này
-- [ ] CI chạy test tối thiểu trên PR
-- [ ] Security review định kỳ trên ingest + SQL path
-- [ ] Validate Docker/dev startup và schema init
-- [ ] Định nghĩa API contract cho health / trace / audit
-- [ ] RBAC / secret management / audit governance explicit
+- [ ] Mỗi phase có "Ready for next phase" checklist và được tick trước khi mở phase kế tiếp
+- [ ] CI bắt buộc chạy test tối thiểu trên PR (unit + smoke E2E + lint)
+- [ ] Security review định kỳ trên ingest + SQL path + policy redaction log
+- [ ] Validate Docker/dev startup, schema init, migration rollback theo chu kỳ
+- [ ] Duy trì API contract cho `health` / `ready` / `trace` / `audit` và test tương thích ngược
+- [ ] RBAC / secret management / audit governance explicit và có owner chịu trách nhiệm
 - [x] Bổ sung runbooks cơ bản trong `runbooks/` và docs deployment cho Phase 8
 
 ---

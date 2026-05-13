@@ -1,10 +1,10 @@
 from __future__ import annotations
-import json
 import uuid
 from typing import Any, Dict
 
 from core.utils.infra.db import get_connection
 from core.utils.infra.audit import log_agent_event
+from core.utils.infra.json_utils import json_dumps
 
 
 class LearningAgent:
@@ -17,7 +17,7 @@ class LearningAgent:
         thread_id: str,
         session_id: str,
     ) -> Dict[str, Any]:
-        content = json.dumps(
+        content = json_dumps(
             {
                 "thread_id": thread_id,
                 "execution_status": execution_state.get("status"),

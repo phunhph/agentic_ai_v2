@@ -1,4 +1,5 @@
 from __future__ import annotations
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -9,10 +10,12 @@ from core.agents.reflector_agent import ReflectorAgent
 from core.agents.reasoning_agent import ReasoningAgent
 from core.tools.mcp_tool import MCPTool
 from core.tools.semantic_schema import SemanticSchemaRetriever
+from core.utils.infra.checkpoint import CheckpointStore
 from core.utils.infra.metrics import log_metric
 from core.utils.logic.context_optimizer import ContextOptimizer
 from core.utils.logic.cost_router import CostRouter
 from core.utils.logic.rls_manager import RLSManager
+from core.utils.logic.retry_policy import RetryPolicy
 from core.utils.logic.tenant_guard import TenantGuard
 
 
@@ -31,6 +34,8 @@ class LangGraphRuntime:
         self.cost_router = CostRouter()
         self.tenant_guard = TenantGuard()
         self.rls_manager = RLSManager()
+        self.retry_policy = RetryPolicy(max_attempts=3)
+        self.store = CheckpointStore()
 
     def run(
         self,
@@ -91,14 +96,15 @@ class LangGraphRuntime:
             sql = f"SELECT * FROM {schema_context['views'][0]} LIMIT 5"
             sql_preview = self.mcp_tool.preview(sql)
 
+        execution_input = {
+            "views": optimized_context.get("related_views", schema_context.get("views", [])),
+            "details": [optimized_context.get("mini_schema", "")],
+        }
         execution_state = self.execution_agent.execute(
             planning_state=planning_state,
             thread_id=thread_id,
             session_id=session_id or "",
-            schema_context={
-                "views": optimized_context.get("related_views", schema_context.get("views", [])),
-                "details": [optimized_context.get("mini_schema", "")],
-            },
+            schema_context=execution_input,
             prompt=prompt,
         )
         reflection_state = self.reflector_agent.evaluate(
@@ -108,6 +114,51 @@ class LangGraphRuntime:
             thread_id=thread_id,
             session_id=session_id or "",
         )
+        retry_attempts: list[dict[str, Any]] = []
+        attempt = 1
+
+        while reflection_state.get("status") == "fail":
+            error_label = self._classify_execution_error(execution_state, reflection_state)
+            retry_exception = RuntimeError(error_label)
+            if not self.retry_policy.should_retry(attempt, retry_exception):
+                break
+
+            backoff_seconds = self.retry_policy.get_backoff(attempt)
+            retry_attempts.append(
+                {
+                    "attempt": attempt,
+                    "error_class": error_label,
+                    "backoff_seconds": backoff_seconds,
+                }
+            )
+            time.sleep(min(backoff_seconds, 0.2))
+            execution_state = self.execution_agent.execute(
+                planning_state=planning_state,
+                thread_id=thread_id,
+                session_id=session_id or "",
+                schema_context=execution_input,
+                prompt=prompt,
+            )
+            reflection_state = self.reflector_agent.evaluate(
+                execution_state=execution_state,
+                reasoning_state=reasoning_state,
+                planning_state=planning_state,
+                thread_id=thread_id,
+                session_id=session_id or "",
+            )
+            attempt += 1
+
+        dlq_record = None
+        if reflection_state.get("status") == "fail":
+            dlq_record = self._move_to_dlq(
+                thread_id=thread_id,
+                session_id=session_id or "",
+                planning_state=planning_state,
+                execution_state=execution_state,
+                reflection_state=reflection_state,
+                retry_attempts=retry_attempts,
+            )
+
         learning_state = self.learning_agent.learn(
             execution_state=execution_state,
             reflection_state=reflection_state,
@@ -126,6 +177,8 @@ class LangGraphRuntime:
             execution_state,
             reflection_state,
             sql_preview,
+            retry_attempts,
+            dlq_record,
         )
         trace = self._build_trace(
             prompt,
@@ -136,6 +189,8 @@ class LangGraphRuntime:
             execution_state,
             reflection_state,
             sql_preview,
+            retry_attempts,
+            dlq_record,
         )
 
         return {
@@ -148,6 +203,8 @@ class LangGraphRuntime:
             "execution_state": execution_state,
             "reflection_state": reflection_state,
             "learning_state": learning_state,
+            "retry_attempts": retry_attempts,
+            "dlq_record": dlq_record,
         }
 
     def _build_result(
@@ -160,6 +217,8 @@ class LangGraphRuntime:
         execution_state: dict[str, Any],
         reflection_state: dict[str, Any],
         sql_preview: dict[str, Any] | None,
+        retry_attempts: list[dict[str, Any]],
+        dlq_record: dict[str, Any] | None,
     ) -> str:
         intent = reasoning_state.get("business_intent", "unknown")
         complexity = reasoning_state.get("complexity", "unknown")
@@ -194,13 +253,26 @@ class LangGraphRuntime:
         if task_summary:
             detail_lines.append(task_summary)
 
+        completed_tasks = [task for task in execution_state.get("tasks", []) if task.get("status") == "completed"]
         task_rows = [
             f"{task.get('task_id')}: {task.get('result', {}).get('count', 'n/a')} rows"
-            for task in execution_state.get("tasks", [])
-            if task.get("status") == "completed"
+            for task in completed_tasks
         ]
         if task_rows:
             detail_lines.append(f"Task results: {', '.join(task_rows)}.")
+
+        failed_tasks = [task for task in execution_state.get("tasks", []) if task.get("status") != "completed"]
+        if failed_tasks:
+            failed_descriptions = [
+                f"{task.get('task_id')} ({task.get('status')}): {task.get('error', 'unknown error')}"
+                for task in failed_tasks
+            ]
+            detail_lines.append(f"Failed or rejected tasks: {', '.join(failed_descriptions)}.")
+
+        if retry_attempts:
+            detail_lines.append(f"Retry attempts: {len(retry_attempts)}.")
+        if dlq_record:
+            detail_lines.append(f"DLQ record created: {dlq_record.get('dlq_id')}.")
 
         detail_lines.append("Execution completed in Phase 6.")
         return "\n".join(detail_lines)
@@ -215,6 +287,8 @@ class LangGraphRuntime:
         execution_state: dict[str, Any],
         reflection_state: dict[str, Any],
         sql_preview: dict[str, Any] | None,
+        retry_attempts: list[dict[str, Any]],
+        dlq_record: dict[str, Any] | None,
     ) -> dict[str, Any]:
         steps = [
             {"step": "route", "detail": f"Selected model {route['selected']['model']}"},
@@ -238,4 +312,54 @@ class LangGraphRuntime:
             "planning_state": planning_state,
             "execution_state": execution_state,
             "reflection_state": reflection_state,
+            "retry_attempts": retry_attempts,
+            "dlq_record": dlq_record,
         }
+
+    def _classify_execution_error(
+        self,
+        execution_state: dict[str, Any],
+        reflection_state: dict[str, Any],
+    ) -> str:
+        error_text = (execution_state.get("error") or "").lower()
+        issues_text = " ".join(reflection_state.get("issues", [])).lower()
+        merged = f"{error_text} {issues_text}".strip()
+
+        if any(keyword in merged for keyword in ["timeout", "timed out"]):
+            return "timeout"
+        if any(keyword in merged for keyword in ["rate limit", "429"]):
+            return "rate limit"
+        if any(keyword in merged for keyword in ["connection", "network", "temporary"]):
+            return "transient"
+        if merged:
+            return "logic"
+        return "unknown"
+
+    def _move_to_dlq(
+        self,
+        thread_id: str,
+        session_id: str,
+        planning_state: dict[str, Any],
+        execution_state: dict[str, Any],
+        reflection_state: dict[str, Any],
+        retry_attempts: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        dlq_record = {
+            "dlq_id": str(uuid4()),
+            "thread_id": thread_id,
+            "session_id": session_id,
+            "plan_id": planning_state.get("plan_id"),
+            "execution_id": execution_state.get("execution_id"),
+            "reflection_id": reflection_state.get("reflection_id"),
+            "reason": execution_state.get("error") or "; ".join(reflection_state.get("issues", [])),
+            "retry_attempts": retry_attempts,
+            "status": "queued_for_manual_replay",
+        }
+        self.store.save_state(
+            thread_id=thread_id,
+            session_id=session_id,
+            state_data=dlq_record,
+            state_type="dlq",
+            previous_checkpoint_id=execution_state.get("execution_id"),
+        )
+        return dlq_record

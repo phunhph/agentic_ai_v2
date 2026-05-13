@@ -51,6 +51,8 @@ def main() -> None:
         st.session_state.history = []
     if "trace_response" not in st.session_state:
         st.session_state.trace_response = None
+    if "latest_agent_payload" not in st.session_state:
+        st.session_state.latest_agent_payload = None
 
     sidebar = st.sidebar
     sidebar.header("Agent Session")
@@ -93,6 +95,7 @@ def main() -> None:
                             "thread_id": st.session_state.thread_id,
                         } # type: ignore
                     )
+                    st.session_state.latest_agent_payload = result
                     st.success("Prompt sent successfully")
                     run_rerun()
                 except requests.RequestException as exc:
@@ -105,6 +108,39 @@ def main() -> None:
                 st.caption(f"thread_id: {item['thread_id']}")
 
     with col2:
+        st.subheader("Realtime state viewer")
+        payload = st.session_state.latest_agent_payload
+        if payload:
+            st.caption("Latest reasoning/planning/execution/reflection state")
+            st.markdown("**Summary**")
+            st.info(payload.get("result", "No result summary available."))
+
+            st.markdown("**Execution overview**")
+            execution_state = payload.get("execution_state") or {}
+            st.write("Status:", execution_state.get("status", "unknown"))
+            st.write("Tasks:")
+            tasks = execution_state.get("tasks", [])
+            if tasks:
+                for task in tasks:
+                    st.write(
+                        f"- {task.get('task_id')}: {task.get('status')} | rows={task.get('result', {}).get('count', 'n/a')} | error={task.get('error', '')}"
+                    )
+            else:
+                st.write("No task execution details available.")
+
+            st.markdown("**Trace details**")
+            trace = payload.get("trace")
+            if trace:
+                st.write("Selected model:", trace.get("selected_model", {}).get("model", "unknown"))
+                st.write("Semantic views:", ", ".join(trace.get("schema", {}).get("views", [])))
+                if trace.get("sql_debug") is not None:
+                    st.code(trace["sql_debug"].get("sql", "No SQL preview available"))
+            else:
+                st.write("No trace payload available.")
+        else:
+            st.info("Submit a prompt to see realtime workflow state.")
+
+        st.markdown("---")
         st.subheader("Trace viewer")
         thread_input = st.text_input("Trace thread ID", value=st.session_state.thread_id)
         if st.button("Load trace") and thread_input.strip(): # type: ignore

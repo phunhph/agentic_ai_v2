@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from core.schemas import PlanningStateModel
 from core.utils.infra.checkpoint import CheckpointStore
 
 
@@ -13,7 +14,7 @@ class PlanningAgent:
         self,
         reasoning_state: Dict[str, Any],
         thread_id: str,
-        session_id: str,
+        session_id: str | None = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         task_descriptions = self._plan_tasks(reasoning_state)
@@ -32,14 +33,16 @@ class PlanningAgent:
             "created_at": datetime.utcnow().isoformat() + "Z",
         }
 
+        validated_state = PlanningStateModel.model_validate(state).model_dump(mode="json")
+
         self.store.save_state(
             thread_id=thread_id,
             session_id=session_id,
-            state_data=state,
+            state_data=validated_state,
             state_type="planning",
             previous_checkpoint_id=reasoning_state.get("reasoning_id"),
         )
-        return state
+        return validated_state
 
     def _plan_tasks(self, reasoning_state: Dict[str, Any]) -> List[str]:
         complexity = reasoning_state.get("complexity", "simple")

@@ -84,7 +84,7 @@ class ExecutionAgent:
         if "count" in description or "aggregate" in description:
             return f"SELECT COUNT(*) AS count FROM {target}"
         if "rank" in description or "sort" in description:
-            return f"SELECT * FROM {target} ORDER BY created_at DESC LIMIT 10"
+            return f"SELECT * FROM {target} ORDER BY created_at DESC"
         if "compare" in description or "temporal" in description:
-            return f"SELECT * FROM {target} LIMIT 5"
-        return f"SELECT * FROM {target} LIMIT 5"
+            return f"SELECT * FROM {target}"
+        return f"SELECT * FROM {target}"
