@@ -1,837 +1,799 @@
-# Phase 7: PlanningAgent Layer (BabyAGI Pattern)
+# Phase 7 — Lean Optimization & Scalability
+## Agentic CRM System
 
-## 1. Overview
+---
 
-PlanningAgent là lớp:
+# 1. Tổng quan Phase 7
+
+Phase 7 là giai đoạn đưa hệ thống từ:
+
+- chạy được
+- đúng được
+- sửa được
+
+sang:
+
+- chạy gọn hơn
+- rẻ hơn
+- nhanh hơn
+- ổn định hơn
+- mở rộng được
+
+Nếu các phase trước xây nên:
+
+- bộ não
+- lớp suy luận
+- execution flow
+- self-healing
+- long-term memory
+
+thì Phase 7 là lớp tối ưu để toàn bộ hệ thống có thể vận hành thật trong production với:
+
+- chi phí thấp
+- tốc độ cao
+- khả năng scale
+- khả năng chống lỗi
+- khả năng giám sát toàn hệ thống
+
+---
+
+# 2. Mục tiêu (Objectives)
+
+## 2.1 Lean Context
+
+Tinh gọn ngữ cảnh để:
+
+- giảm token
+- giảm latency
+- giảm nhiễu
+- tăng độ chính xác
+
+Hệ thống chỉ được nạp đúng phần context cần thiết cho nhiệm vụ hiện tại.
+
+---
+
+## 2.2 Cost Optimization
+
+Tối ưu chi phí bằng:
+
+- routing model theo độ khó
+- giảm số lần gọi model mạnh
+- hạn chế retry không cần thiết
+- ưu tiên local inference cho tác vụ nhỏ
+
+---
+
+## 2.3 Resilience
+
+Tăng khả năng chịu lỗi khi:
+
+- API bị 429
+- provider lỗi 503
+- timeout
+- provider quá tải
+- MCP chậm phản hồi
+
+Hệ thống không được “sập dây chuyền”.
+
+---
+
+## 2.4 Observability
+
+Toàn bộ hệ thống phải đo được:
+
+- latency
+- token usage
+- API cost
+- SQL performance
+- retry rate
+- fallback rate
+- bottleneck
+
+---
+
+## 2.5 Scalability
+
+Chuẩn bị cho khả năng:
+
+- multi-tenant
+- scale nhiều user
+- scale nhiều org
+- scale nhiều agent
+- scale nhiều workflow
+
+---
+
+# 3. Vai trò của Phase 7 trong kiến trúc
 
 ```text
-Task Orchestrator
+User Query
+   ↓
+Lean Context Engine
+   ↓
+Cost-Aware Router
+   ↓
+Execution Flow
+   ↓
+Observability & Metrics
+   ↓
+Learning & Feedback
 ```
 
-Nếu:
+Phase 7 không thay thế các phase trước.
 
-- IngestAgent = hiểu yêu cầu
-- ReasoningAgent = suy luận logic
+Nó là lớp:
 
-thì:
+- tối ưu
+- bảo vệ
+- giám sát
+- mở rộng
+
+cho toàn bộ hệ thống.
+
+---
+
+# 4. Lean Context Engine
+
+## 4.1 Triết lý
+
+Không đưa toàn bộ dữ liệu vào model.
+
+Càng nhiều context thừa:
+
+- càng tốn token
+- càng chậm
+- càng dễ hallucination
+- càng giảm accuracy
+
+Mục tiêu là:
 
 ```text
-PlanningAgent = xây dựng execution roadmap
+Minimum Context → Maximum Accuracy
 ```
 
 ---
 
-# 1.1 Core Philosophy
+# 5. Dynamic Context Compression
 
-ReasoningAgent trả lời:
+## 5.1 Semantic Schema Pruning
+
+Chỉ nạp schema liên quan tới intent hiện tại.
+
+Ví dụ:
+
+User hỏi:
 
 ```text
-CẦN LÀM GÌ
+Doanh thu hợp đồng quý 1
 ```
 
-PlanningAgent trả lời:
+Chỉ cần:
 
-```text
-LÀM THEO THỨ TỰ NÀO
-```
+- `v_hbl_contract`
+- `v_hbl_account`
+- mapping liên quan
+
+Không cần:
+
+- bảng audit
+- bảng user
+- bảng permission
+- schema không liên quan
 
 ---
 
-# 2. Responsibilities of PlanningAgent
+## 5.2 Metadata-Based Selection
 
-| Responsibility | Description |
-|---|---|
-| Task Creation | Sinh task cụ thể |
-| Task Prioritization | Sắp xếp thứ tự |
-| Dependency Management | Quản lý phụ thuộc |
-| Retry Strategy | Tự sửa khi lỗi |
-| Stateful Planning | Lưu trạng thái task |
+Schema selection phải dựa trên:
 
----
+- entity extraction
+- intent classification
+- semantic similarity
+- relationship graph
 
-# 3. BabyAGI Planning Pattern
-
-PlanningAgent sử dụng:
-
-```text
-BabyAGI-style recursive task planning
-```
+Không hardcode mapping bằng tay.
 
 ---
 
-# 3.1 Why BabyAGI Matters
+## 5.3 Mini Schema Injection
 
 Thay vì:
 
 ```text
-One-shot execution
+10.000+ tokens schema
 ```
+
+hệ thống chỉ inject:
+
+```text
+300–800 tokens schema
+```
+
+đủ để model reasoning chính xác.
+
+---
+
+## 5.4 History Truncation
+
+Không gửi toàn bộ chat history.
+
+Hệ thống phải:
+
+- summarize hội thoại cũ
+- giữ lại context quan trọng
+- loại bỏ đoạn dư thừa
+- bỏ reasoning trace không còn giá trị
+
+---
+
+## 5.5 Context Summarization
+
+Các state cũ sẽ được nén thành:
+
+- current intent
+- active entities
+- last execution
+- unresolved issues
+- current business objective
+
+---
+
+# 6. Cost Optimization Engine
+
+## 6.1 Triết lý
+
+Không dùng:
+
+```text
+DAO MỔ TRÂU → GIẾT GÀ
+```
+
+Câu hỏi đơn giản không được đi qua pipeline đắt tiền.
+
+---
+
+# 7. Cost-Aware Routing
+
+## 7.1 Dynamic Model Selection
+
+Hệ thống chọn model theo:
+
+- độ khó
+- loại task
+- mức độ reasoning
+- latency requirement
+- cost policy
+
+---
+
+## 7.2 Routing Matrix
+
+| Task Type | Priority | Suggested Model |
+|---|---|---|
+| Greeting / small talk | tốc độ | Flash / lightweight |
+| Intent classification | siêu rẻ | Local classifier |
+| Basic SQL reasoning | cân bằng | Flash / Groq |
+| Complex reasoning | chính xác | Gemini Pro / Claude |
+| Reflection / QA | logic mạnh | Claude / strong reasoning model |
+
+---
+
+## 7.3 Cost Guardrails
+
+Các giới hạn cần có:
+
+- max token input
+- max retries
+- max reasoning depth
+- max tool calls
+- max concurrent executions
+
+---
+
+## 7.4 Local First Strategy
+
+Nếu task đủ đơn giản:
+
+- xử lý local
+- không gọi API ngoài
+- không tốn token
+
+Ví dụ:
+
+- greeting
+- intent sơ cấp
+- query classification
+- routing
+
+---
+
+# 8. Resilience Engine
+
+## 8.1 Mục tiêu
+
+Hệ thống phải sống được khi:
+
+- provider lỗi
+- API rate limit
+- timeout
+- provider mất kết nối
+- model unavailable
+
+---
+
+# 9. Exponential Backoff
+
+## 9.1 Retry Policy
+
+Nếu gặp:
+
+```text
+429 Rate Limit
+```
+
+hệ thống không retry ngay lập tức.
+
+Chu kỳ:
+
+```text
+2s → 4s → 8s → 16s
+```
+
+Có jitter để tránh request burst.
+
+---
+
+# 10. Multi-Provider Fallback
+
+## 10.1 Fallback Chain
+
+Ví dụ:
+
+```text
+Gemini Flash
+   ↓ fail
+Groq Llama
+   ↓ fail
+Claude
+```
+
+Fallback phải được quản lý tập trung.
+
+Không để agent tự fallback lung tung.
+
+---
+
+# 11. Circuit Breaker Pattern
+
+## 11.1 Mục tiêu
+
+Nếu provider lỗi liên tục:
+
+- tạm khóa provider
+- chuyển traffic sang provider khác
+- tránh spam request vô ích
+
+---
+
+## 11.2 Circuit States
+
+| State | Ý nghĩa |
+|---|---|
+| CLOSED | hoạt động bình thường |
+| OPEN | provider đang bị chặn |
+| HALF_OPEN | thử khôi phục |
+
+---
+
+# 12. Graceful Degradation
+
+## 12.1 Triết lý
+
+Nếu một phần hệ thống lỗi:
+
+- phần còn lại vẫn hoạt động
+- không crash toàn bộ pipeline
+
+---
+
+## 12.2 Ví dụ
+
+Nếu:
+
+- Reflection model fail
+
+thì:
+
+- vẫn có thể trả basic response
+- gắn warning
+- log lại lỗi
+
+---
+
+# 13. Observability Cockpit
+
+## 13.1 Mục tiêu
+
+Admin phải nhìn thấy:
+
+- hệ thống đang làm gì
+- tốn bao nhiêu tiền
+- nghẽn ở đâu
+- lỗi ở đâu
+- agent nào đang bất thường
+
+---
+
+# 14. Cost Analytics
+
+## 14.1 Metrics cần theo dõi
+
+- token input
+- token output
+- cost theo request
+- cost theo tenant
+- cost theo model
+- cost theo agent
+
+---
+
+## 14.2 Dashboard cần có
+
+- Daily API Spend
+- Cost by Agent
+- Cost by Tenant
+- Model Usage
+- Token Consumption Trend
+
+---
+
+# 15. Bottleneck Detection
+
+## 15.1 Theo dõi latency
+
+Đo thời gian cho:
+
+- ingest
+- reasoning
+- planning
+- execution
+- reflection
+- learning
+
+---
+
+## 15.2 Slow SQL Detection
+
+Theo dõi:
+
+- execution time
+- row count
+- query frequency
+- repeated failed queries
+
+---
+
+# 16. Failure Analytics
+
+## 16.1 Theo dõi lỗi
+
+- 429 frequency
+- 503 frequency
+- timeout rate
+- retry success rate
+- fallback usage
+- reflection failures
+
+---
+
+# 17. Feedback Loop
+
+## 17.1 User Feedback System
+
+UI cần có:
+
+- 👍
+- 👎
+
+---
+
+## 17.2 Nếu user bấm 👎
 
 Hệ thống sẽ:
 
-- chia task nhỏ
-- execute tuần tự
-- đánh giá kết quả
-- tự điều chỉnh khi lỗi
+- flag response
+- lưu negative memory
+- giảm ranking của pattern sai
+- cảnh báo future execution
 
 ---
 
-# 3.2 Planning Workflow
+# 18. Learning Feedback Integration
+
+## 18.1 Feedback → Learning Flow
 
 ```text
-ReasoningAgent
-    ↓
-PlanningAgent
-    ↓
-Task Queue Creation
-    ↓
-ExecutionAgent
-    ↓
-[Error?]
-    ├── YES → Loop Back Planning
-    └── NO → Continue
+User Feedback
+   ↓
+Memory Signal
+   ↓
+Vector Embedding
+   ↓
+pgvector Storage
+   ↓
+Future Retrieval Optimization
 ```
 
 ---
 
-# 4. Task Creation
+# 19. Scalability Architecture
 
-PlanningAgent chuyển:
+## 19.1 Multi-Tenant Support
+
+Một hệ thống phải phục vụ được:
+
+- nhiều công ty
+- nhiều workspace
+- nhiều user
+
+mà không lẫn dữ liệu.
+
+---
+
+# 20. Row-Level Security (RLS)
+
+## 20.1 PostgreSQL RLS
+
+Dùng:
+
+```sql
+ALTER TABLE ... ENABLE ROW LEVEL SECURITY;
+```
+
+để:
+
+- cô lập tenant
+- chống data leak
+- enforce security ở tầng DB
+
+---
+
+## 20.2 Org Isolation
+
+Mọi query phải có:
 
 ```text
-logic steps
+org_id
+```
+
+trong execution context.
+
+---
+
+# 21. Tenant-Aware Execution
+
+## 21.1 MCP Layer
+
+MCP phải inject:
+
+- org_id
+- role
+- permission scope
+
+vào mọi execution request.
+
+---
+
+## 21.2 Agent Isolation
+
+Agent không được:
+
+- truy cập cross-tenant
+- reuse state giữa tenant
+- leak memory giữa org
+
+---
+
+# 22. DANN — Dynamic Agentic Neural Network
+
+## 22.1 Mục tiêu
+
+Tạo lớp local inference siêu nhanh để:
+
+- giảm token cost
+- giảm latency
+- giảm phụ thuộc external API
+
+---
+
+## 22.2 Vai trò
+
+DANN dùng cho:
+
+- intent classification
+- lightweight routing
+- greeting detection
+- low-level gating
+- query categorization
+
+---
+
+## 22.3 Latency Target
+
+```text
+< 50ms
+```
+
+cho các tác vụ gating đơn giản.
+
+---
+
+# 23. DANN Pipeline
+
+```text
+User Query
+   ↓
+Local Intent Model
+   ↓
+Fast Classification
+   ↓
+Cost-Aware Router
+   ↓
+LLM Pipeline
+```
+
+---
+
+# 24. Optimization Workflow
+
+```text
+User Input
+   ↓
+Context Compression
+   ↓
+Schema Pruning
+   ↓
+Local Intent Classification
+   ↓
+Cost-Aware Routing
+   ↓
+Execution Pipeline
+   ↓
+Metrics Collection
+   ↓
+Feedback Processing
+```
+
+---
+
+# 25. Audit & Metrics Storage
+
+## 25.1 Các bảng cần có
+
+```text
+audit_zone.api_cost_logs
+audit_zone.latency_logs
+audit_zone.retry_logs
+audit_zone.fallback_logs
+audit_zone.feedback_logs
+audit_zone.performance_metrics
+```
+
+---
+
+# 26. Logging Requirements
+
+## 26.1 Phải log
+
+- model usage
+- token usage
+- retries
+- fallback events
+- execution duration
+- reflection duration
+- SQL latency
+
+---
+
+## 26.2 Không log
+
+- API keys
+- secrets
+- raw credentials
+- sensitive payloads không cần thiết
+
+---
+
+# 27. Folder Structure đề xuất
+
+```text
+/project-root
+├── core/
+│
+├── optimization/
+│   ├── context/
+│   │   ├── schema_pruner.py
+│   │   ├── history_summarizer.py
+│   │   ├── context_compressor.py
+│   │   └── token_manager.py
+│   │
+│   ├── routing/
+│   │   ├── cost_router.py
+│   │   ├── provider_router.py
+│   │   ├── fallback_policy.py
+│   │   ├── retry_policy.py
+│   │   └── circuit_breaker.py
+│   │
+│   ├── observability/
+│   │   ├── metrics_collector.py
+│   │   ├── latency_tracker.py
+│   │   ├── cost_tracker.py
+│   │   ├── feedback_engine.py
+│   │   └── dashboard_service.py
+│   │
+│   ├── scalability/
+│   │   ├── tenant_guard.py
+│   │   ├── rls_manager.py
+│   │   ├── org_context.py
+│   │   └── workspace_resolver.py
+│   │
+│   └── local_ai/
+│       ├── intent_classifier.py
+│       ├── local_router.py
+│       └── dann_engine.py
+```
+
+---
+
+# 28. Success Criteria
+
+Phase 7 được xem là hoàn thành khi:
+
+- context được nén hiệu quả
+- token usage giảm mạnh
+- routing hoạt động theo cost policy
+- fallback ổn định
+- retry có kiểm soát
+- observability dashboard hoạt động
+- latency đo được toàn pipeline
+- RLS hoạt động đúng
+- multi-tenant isolation an toàn
+- local DANN inference hoạt động nhanh
+
+---
+
+# 29. Kết luận
+
+Phase 7 là giai đoạn đưa hệ thống từ:
+
+```text
+AI hoạt động được
 ```
 
 thành:
 
 ```text
-structured executable tasks
+AI production-grade
 ```
 
----
-
-# 4.1 Example Input
-
-```json
-{
-  "steps": [
-    {
-      "step": 1,
-      "description": "Resolve Finance choice code"
-    },
-    {
-      "step": 2,
-      "description": "Join account and contract tables"
-    }
-  ]
-}
-```
-
----
-
-# 4.2 Example Planned Tasks
-
-```json
-[
-  {
-    "task_id": 1,
-    "action": "execute_sql",
-    "description": "Get Finance choice code"
-  },
-  {
-    "task_id": 2,
-    "action": "execute_sql",
-    "description": "Join account and contract"
-  },
-  {
-    "task_id": 3,
-    "action": "format_data",
-    "description": "Format revenue report"
-  }
-]
-```
-
----
-
-# 5. Task Prioritization
-
-PlanningAgent phải hiểu:
-
-```text
-dependency order
-```
-
----
-
-# 5.1 Example Dependency
-
-Không thể:
-
-```text
-SUM revenue
-```
-
-nếu chưa:
-
-```text
-JOIN contract tables
-```
-
----
-
-# 5.2 Correct Execution Order
-
-```text
-1. Resolve choice_code
-2. Build JOIN
-3. Aggregate revenue
-4. Format result
-5. Verify output
-```
-
----
-
-# 6. Dynamic Adjustment
-
-Đây là tính năng "Master".
-
-Nếu ExecutionAgent lỗi:
-
-PlanningAgent sẽ:
-
-- nhận execution feedback
-- phân tích lỗi
-- tạo task sửa lỗi
-- re-prioritize queue
-
----
-
-# 6.1 Example Failure Scenario
-
-ExecutionAgent trả về:
-
-```text
-column hbl_contract_jan does not exist
-```
-
----
-
-# 6.2 PlanningAgent Response
-
-PlanningAgent tạo task mới:
-
-```json
-{
-  "task_id": 99,
-  "action": "repair_sql",
-  "description": "Check schema metadata and fix invalid column"
-}
-```
-
----
-
-# 6.3 Why Recursive Planning Matters
-
-Nếu không có loop-back:
-
-- workflow chết ngay
-- không recover
-- UX rất tệ
-
-Recursive planning giúp:
-
-- self-healing workflow
-- adaptive execution
-- resilient orchestration
-
----
-
-# 7. Model Selection
-
-## Recommended Model
-
-```text
-gemini/gemini-1.5-flash
-```
-
----
-
-# 7.1 Why Gemini Flash
-
-Planning cần:
-
-- structured output
-- deterministic task generation
-- fast response
-- low cost
-
-Gemini Flash phù hợp vì:
-
-- JSON formatting tốt
-- stable instruction following
-- planning consistency cao
-
----
-
-# 8. Structured Task Format
-
-PlanningAgent bắt buộc trả JSON.
-
----
-
-# 8.1 Output Contract
-
-```json
-{
-  "todo_list": [],
-  "status": "ready"
-}
-```
-
----
-
-# 8.2 Task Object Format
-
-```json
-{
-  "task_id": 1,
-  "action": "execute_sql",
-  "description": "Get revenue data",
-  "input_from_task": null
-}
-```
-
----
-
-# 8.3 Supported Actions
-
-| Action | Purpose |
-|---|---|
-| `execute_sql` | Run SQL query |
-| `format_data` | Format output |
-| `verify_result` | Validate data |
-| `repair_sql` | Fix failed SQL |
-| `aggregation` | Aggregate data |
-
----
-
-# 9. Implementation
-
-## File: `core/agents/planning.py`
-
-```python
-from litellm import completion
-
-import json
-
-def planning_agent_node(state):
-
-    """
-    PlanningAgent:
-    - task creation
-    - prioritization
-    - dependency management
-    """
-
-    logic_plan = state["logic_plan"]
-
-    current_tasks = state.get(
-        "plan",
-        []
-    )
-
-    prompt = f"""
-    Bạn là PlanningAgent.
-
-    Dựa trên logic plan:
-
-    {json.dumps(logic_plan)}
-
-    Hãy tạo danh sách task
-    cho ExecutionAgent.
-
-    Mỗi task phải có:
-
-    1. task_id
-    2. action
-    3. description
-    4. input_from_task
-
-    Action hợp lệ:
-    - execute_sql
-    - format_data
-    - verify_result
-    - repair_sql
-
-    Trả về JSON:
-
-    {{
-        "todo_list": [
-            {{
-                "task_id": 1,
-                "action": "execute_sql",
-                "description": "...",
-                "input_from_task": null
-            }}
-        ],
-
-        "status": "ready"
-    }}
-    """
-
-    response = completion(
-
-        model="gemini/gemini-1.5-flash",
-
-        messages=[
-            {
-                "role": "system",
-                "content": prompt
-            }
-        ],
-
-        response_format={
-            "type": "json_object"
-        }
-    )
-
-    plan_data = json.loads(
-        response.choices[0].message.content
-    )
-
-    task_summary = ", ".join(
-        [
-            t["description"][:30]
-            for t in plan_data["todo_list"]
-        ]
-    )
-
-    new_trace = {
-
-        "node": "PlanningAgent",
-
-        "msg": (
-            f"📋 Tasks planned: "
-            f"{task_summary}..."
-        )
-    }
-
-    return {
-
-        "plan": plan_data["todo_list"],
-
-        "trace": [new_trace],
-
-        "next_step": "execution"
-    }
-```
-
----
-
-# 10. Dependency Management
-
-PlanningAgent phải đảm bảo:
-
-```text
-Task order is valid
-```
-
----
-
-# 10.1 Example Dependency Tree
-
-```text
-Task 1:
-Resolve Finance code
-
-↓ feeds into
-
-Task 2:
-JOIN account tables
-
-↓ feeds into
-
-Task 3:
-Aggregate revenue
-```
-
----
-
-# 10.2 Example Task Dependency
-
-```json
-{
-  "task_id": 2,
-  "input_from_task": 1
-}
-```
-
----
-
-# 11. Recursive Planning Architecture
-
-Đây là đặc điểm cực kỳ quan trọng.
-
----
-
-# 11.1 Loop-Back Flow
-
-```text
-ExecutionAgent
-    ↓
-Execution Error
-    ↓
-PlanningAgent
-    ↓
-Generate Repair Task
-    ↓
-ExecutionAgent Retry
-```
-
----
-
-# 11.2 Self-Healing Workflow
-
-Hệ thống có thể:
-
-- detect lỗi
-- sửa kế hoạch
-- retry execution
-- continue workflow
-
-mà không cần user intervention.
-
----
-
-# 12. Stateful Planning
-
-Toàn bộ task list được lưu trong:
-
-```python
-AgentState
-```
-
----
-
-# 12.1 Why Stateful Planning Matters
-
-Giúp:
-
-- resume execution
-- track progress
-- retry failed tasks
-- visualize workflow
-
----
-
-# 12.2 Example AgentState
-
-```python
-{
-  "plan": [
-    {
-      "task_id": 1,
-      "status": "completed"
-    },
-    {
-      "task_id": 2,
-      "status": "running"
-    }
-  ]
-}
-```
-
----
-
-# 13. Streamlit UI Integration
-
-Sidebar hiển thị:
-
-```text
-[PlanningAgent]
-
-✅ Task 1 completed
-🔄 Task 2 running
-⏳ Task 3 pending
-```
-
----
-
-# 13.1 Progress Tracking
-
-User có thể thấy:
-
-```text
-Completed: 2/5 tasks
-```
-
-real-time trên UI.
-
----
-
-# 14. Real-World Scenario
-
-## User Query
-
-```text
-Top doanh thu Finance Accounts tại Vietnam
-```
-
----
-
-# 14.1 Generated Plan
-
-```json
-{
-  "todo_list": [
-
-    {
-      "task_id": 1,
-      "action": "execute_sql",
-      "description": "Resolve Finance choice code"
-    },
-
-    {
-      "task_id": 2,
-      "action": "execute_sql",
-      "description": "Resolve Vietnam choice code"
-    },
-
-    {
-      "task_id": 3,
-      "action": "execute_sql",
-      "description": "Join account and contract tables",
-      "input_from_task": 1
-    },
-
-    {
-      "task_id": 4,
-      "action": "aggregation",
-      "description": "Calculate revenue totals",
-      "input_from_task": 3
-    },
-
-    {
-      "task_id": 5,
-      "action": "format_data",
-      "description": "Format leaderboard report"
-    }
-  ]
-}
-```
-
----
-
-# 15. Traceability
-
-Mọi planning action phải được trace.
-
----
-
-# 15.1 Example Trace
-
-```json
-{
-  "node": "PlanningAgent",
-  "msg": "📋 Planned 5 execution tasks"
-}
-```
-
----
-
-# 15.2 Why Trace Matters
-
-Giúp:
-
-- debug workflows
-- visualize orchestration
-- replay planning
-- optimize execution
-
----
-
-# 16. Integration with ExecutionAgent
-
-PlanningAgent không execute.
-
-Nó chỉ:
-
-- build task queue
-- define dependencies
-- assign actions
-
-ExecutionAgent sẽ:
-
-- consume tasks
-- run tools
-- return results
-
----
-
-# 16.1 Handoff Contract
-
-```json
-{
-  "plan": []
-}
-```
-
----
-
-# 17. Recommended Graph Flow
-
-```text
-START
-  ↓
-IngestAgent
-  ↓
-ReasoningAgent
-  ↓
-PlanningAgent
-  ↓
-ExecutionAgent
-```
-
----
-
-# 18. Recommended Folder Structure
-
-```text
-/core
-├── agents/
-│   ├── ingest.py
-│   ├── reasoning.py
-│   ├── planning.py
-│   └── execution.py
-│
-├── graph/
-│   └── graph.py
-│
-└── state.py
-```
-
----
-
-# 19. Recommended Future Improvements
-
-| Current | Future |
-|---|---|
-| Static task queue | Dynamic task graph |
-| Linear planning | Parallel execution |
-| Simple retries | Autonomous repair planning |
-| Manual dependencies | DAG-based orchestration |
-
----
-
-# 20. Testing Strategy
-
-## Test Categories
-
-| Test | Purpose |
-|---|---|
-| Task creation test | Verify todo generation |
-| Dependency test | Verify execution order |
-| Retry test | Verify loop-back planning |
-| State test | Verify task persistence |
-
----
-
-# 20.1 Example Planning Test
-
-```python
-def test_task_generation():
-
-    state = {
-        "logic_plan": {
-            "steps": [
-                {
-                    "step": 1,
-                    "description": "Resolve Finance code"
-                }
-            ]
-        }
-    }
-
-    result = planning_agent_node(state)
-
-    assert len(result["plan"]) > 0
-```
-
----
-
-# 20.2 Example Retry Test
-
-```python
-def test_repair_task_creation():
-
-    failed_state = {
-        "execution_error": (
-            "column does not exist"
-        )
-    }
-
-    # Simulate planning retry
-
-    assert True
-```
-
----
-
-# 21. Phase 7 Completion Checklist
-
-## Core Planning
-
-- [ ] Implement `planning_agent_node`
-- [ ] Connect Gemini Flash
-- [ ] Generate structured todo list
-- [ ] Save task queue into AgentState
-
----
-
-## Task Management
-
-- [ ] Create dependency-aware tasks
-- [ ] Prioritize execution order
-- [ ] Track task status
-- [ ] Support nested workflows
-
----
-
-## Recursive Planning
-
-- [ ] Handle execution failures
-- [ ] Generate repair tasks
-- [ ] Support loop-back flow
-- [ ] Retry failed workflows
-
----
-
-## UI Integration
-
-- [ ] Display task progress
-- [ ] Show running/completed tasks
-- [ ] Visualize workflow status
-
----
-
-# 22. Expected Outcome After Phase 7
-
-Sau khi hoàn thành:
-
-Hệ thống sẽ có:
-
-- BabyAGI-style task orchestration
-- Stateful execution planning
-- Dependency-aware workflows
-- Recursive self-healing planning
-- Traceable task execution
-- Adaptive retry architecture
-
-AI Agent sẽ có khả năng:
-
-- tự tạo execution roadmap
-- quản lý task dependencies
-- retry khi execution lỗi
-- tự sửa workflow
-- visualize tiến trình
-- orchestrate complex CRM queries
+Đây là lớp:
+
+- tối ưu
+- chống lỗi
+- đo lường
+- mở rộng
+
+để Agentic CRM có thể:
+
+- phục vụ nhiều user
+- vận hành dài hạn
+- tiết kiệm chi phí
+- scale enterprise
+- hoạt động ổn định trong thực tế
+
+Nếu các phase trước xây dựng trí thông minh, thì Phase 7 là thứ giúp trí thông minh đó:
+
+- sống được
+- chạy bền
+- scale được
+- và tối ưu được theo thời gian

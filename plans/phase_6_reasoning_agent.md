@@ -1,757 +1,895 @@
-# Phase 6: ReasoningAgent Layer (The Thinker)
-
-## 1. Overview
-
-Nếu IngestAgent là:
-
-```text
-The Gatekeeper
-```
-
-thì ReasoningAgent là:
-
-```text
-The Thinker
-```
-
-Đây là lớp chịu trách nhiệm:
-
-- phân tích logic
-- bẻ nhỏ bài toán
-- hiểu quan hệ dữ liệu
-- xây dựng execution strategy
+# Phase 6 — Execution, Reflection & Continuous Learning
+## Agentic CRM System
 
 ---
 
-# 1.1 Core Philosophy
+# 1. Tổng quan Phase 6
 
-ReasoningAgent không viết SQL trực tiếp.
+Phase 6 là giai đoạn hệ thống chuyển từ:
 
-Nó:
+- hiểu vấn đề
+- lập kế hoạch
+- chuẩn bị task
 
-- suy nghĩ
-- phân tích
-- lập luận
-- decomposite problem
+sang:
 
-sau đó mới chuyển sang PlanningAgent.
+- thực thi thật
+- kiểm tra thật
+- sửa lỗi thật
+- học từ kinh nghiệm thật
+
+Nếu Phase 4 là cửa ngõ tiếp nhận, Phase 5 là tư duy và lập kế hoạch, thì Phase 6 là nơi Agentic CRM bắt đầu **hành động có kiểm soát**.
+
+Đây là một phase cực kỳ quan trọng vì nó quyết định:
+
+- câu lệnh SQL có chạy đúng không
+- kết quả có đúng nghiệp vụ không
+- lỗi có được phát hiện sớm không
+- hệ thống có tự phục hồi được không
+- hệ thống có tiến hóa theo thời gian không
+
+Nói ngắn gọn:
+
+```text
+Phase 6 = Do → Verify → Recover → Learn
+```
 
 ---
 
-# 2. Responsibilities of ReasoningAgent
+# 2. Mục tiêu (Objectives)
 
-| Responsibility | Description |
+## 2.1 Xây dựng ExecutionAgent
+
+ExecutionAgent là lớp “The Doer”.
+
+Nó nhận:
+
+- `task_queue`
+- `mini_schema`
+- `execution_context`
+- `thread_id`
+
+và thực hiện:
+
+- sinh SQL động
+- gọi MCP Server
+- chạy query an toàn
+- lấy kết quả
+- ghi trạng thái execution vào Nexus
+
+ExecutionAgent không phải là nơi suy luận sâu.  
+Nó chỉ tập trung vào việc **làm đúng kế hoạch đã được chuẩn bị ở Phase 5**.
+
+---
+
+## 2.2 Xây dựng ReflectorAgent
+
+ReflectorAgent là lớp kiểm soát chất lượng.
+
+Nó không chạy query mới ngay lập tức.  
+Nó làm nhiệm vụ:
+
+- kiểm tra kết quả có hợp logic không
+- so khớp với câu hỏi gốc
+- phát hiện kết quả rỗng bất thường
+- phát hiện query đúng cú pháp nhưng sai nghiệp vụ
+- quyết định pass hay retry
+
+Nói cách khác:
+
+```text
+ExecutionAgent = làm
+ReflectorAgent = kiểm tra đã làm đúng chưa
+```
+
+---
+
+## 2.3 Xây dựng Self-Healing Loop
+
+Nếu execution lỗi hoặc kết quả đáng ngờ, LangGraph phải có khả năng:
+
+- quay lại PlanningAgent
+- hoặc quay lại ReasoningAgent nếu cần
+- tái lập kế hoạch
+- sinh SQL mới
+- chạy lại trong giới hạn retry
+
+Mục tiêu là tránh việc người dùng phải can thiệp thủ công quá nhiều.
+
+---
+
+## 2.4 Xây dựng LearningAgent
+
+LearningAgent là lớp lưu kinh nghiệm dài hạn.
+
+Nó lưu:
+
+- thành công
+- thất bại
+- pattern query
+- pattern lỗi
+- context hữu ích cho lần sau
+
+Dữ liệu này được vectorize và lưu vào `pgvector` để hỗ trợ tra cứu về sau.
+
+---
+
+# 3. Vai trò của Phase 6 trong pipeline
+
+```text
+User Query
+   ↓
+Phase 4 — Ingest
+   ↓
+Phase 5 — Reasoning & Planning
+   ↓
+Phase 6 — Execution
+   ↓
+Phase 6 — Reflection
+   ↓
+Phase 6 — Learning
+```
+
+Phase 6 là nơi hệ thống bắt đầu tạo ra giá trị thực.
+
+Nếu Phase 5 trả lời:
+
+```text
+Cần làm gì và làm theo thứ tự nào?
+```
+
+thì Phase 6 trả lời:
+
+```text
+Tôi đã làm xong chưa, có đúng không, và tôi sẽ học gì từ lần này?
+```
+
+---
+
+# 4. Kiến trúc tổng thể của Phase 6
+
+```text
+Task Queue
+   ↓
+ExecutionAgent
+   ↓
+safe_executor (MCP)
+   ↓
+PostgreSQL / Result Set
+   ↓
+ReflectorAgent
+   ↓
+PASS → Format Response
+FAIL → Replan / Retry
+   ↓
+LearningAgent
+   ↓
+Vector Memory Store
+```
+
+---
+
+# 5. ExecutionAgent — Lớp thực thi
+
+## 5.1 Định nghĩa
+
+ExecutionAgent là lớp chịu trách nhiệm thực thi task queue.
+
+Nó phải:
+
+- đọc từng task một cách tuần tự hoặc theo dependency
+- sinh SQL phù hợp với mini-schema
+- gọi công cụ an toàn thông qua MCP
+- bắt lỗi kỹ thuật
+- ghi trace và audit
+- lưu kết quả trung gian vào state
+
+ExecutionAgent **không được tự ý suy luận lại toàn bộ bài toán**.  
+Nó chỉ làm đúng phần đã được lên kế hoạch.
+
+---
+
+## 5.2 Nguyên tắc thiết kế
+
+ExecutionAgent phải tuân thủ các nguyên tắc sau:
+
+- **Plan-driven**: chỉ chạy theo task queue
+- **Safe execution**: chỉ qua safe_executor
+- **Small context**: chỉ dùng mini-schema liên quan
+- **Deterministic behavior**: giảm hành vi mơ hồ
+- **Traceable output**: mọi bước đều có log
+- **Retry-aware**: có thể retry khi cần nhưng có giới hạn
+
+---
+
+## 5.3 Nhiệm vụ cốt lõi
+
+### 5.3.1 Task Consumption
+
+ExecutionAgent đọc lần lượt từng task trong `task_queue`.
+
+Ví dụ:
+
+- task 1: lấy dữ liệu
+- task 2: join entity
+- task 3: aggregate
+- task 4: rank
+- task 5: format
+
+---
+
+### 5.3.2 Dynamic SQL Generation
+
+Dựa trên:
+
+- task description
+- mini-schema
+- context của reasoning
+- semantic view metadata
+
+ExecutionAgent sinh SQL động.
+
+Mục tiêu là:
+
+- không hardcode query
+- không dùng toàn bộ schema thô
+- không viết SQL vượt ngoài phạm vi task
+- có thể điều chỉnh khi schema thay đổi
+
+---
+
+### 5.3.3 Tool Calling
+
+ExecutionAgent gọi công cụ `safe_executor` thông qua MCP Server.
+
+Điều này đảm bảo:
+
+- query được kiểm soát
+- chỉ `SELECT`
+- có limit/timeout/validation
+- không có lệnh phá hoại
+- lỗi kỹ thuật được chặn ở lớp thực thi
+
+---
+
+### 5.3.4 Execution Error Capture
+
+ExecutionAgent phải bắt các lỗi như:
+
+- `column does not exist`
+- `relation does not exist`
+- join sai key
+- syntax error
+- timeout
+- empty result bất thường
+- permission denied
+
+Các lỗi này không được đẩy thẳng cho người dùng.  
+Chúng phải được ghi vào state để ReflectorAgent xử lý.
+
+---
+
+# 6. Output của ExecutionAgent
+
+ExecutionAgent cần ghi kết quả mỗi task vào Nexus.
+
+Ví dụ:
+
+```json
+{
+  "task_id": 1,
+  "sql_executed": "SELECT SUM(total_amount) FROM v_hbl_contract WHERE country_label = 'Vietnam'",
+  "execution_status": "success",
+  "raw_results": [
+    {
+      "sum": 1500000
+    }
+  ],
+  "duration_ms": 182,
+  "error_message": null
+}
+```
+
+---
+
+# 7. ReflectorAgent — Lớp phản biện và QA
+
+## 7.1 Định nghĩa
+
+ReflectorAgent là “hệ miễn dịch” của hệ thống.
+
+Nó kiểm tra xem:
+
+- query có đúng mục tiêu không
+- kết quả có hợp lý không
+- có bị sai logic nghiệp vụ không
+- có phải kết quả rỗng thật hay do join sai
+- có nên chấp nhận kết quả hay phải retry
+
+---
+
+## 7.2 Vai trò
+
+Không có ReflectorAgent, hệ thống có thể sinh ra SQL:
+
+- chạy được
+- không lỗi cú pháp
+- nhưng trả kết quả sai nghiệp vụ
+
+Đây là lỗi nguy hiểm nhất vì rất khó phát hiện nếu chỉ nhìn câu lệnh.
+
+---
+
+## 7.3 Quy trình kiểm duyệt
+
+### 7.3.1 Logic Verification
+
+ReflectorAgent kiểm tra:
+
+- câu trả lời có khớp intent ban đầu không
+- aggregation có đúng loại không
+- COUNT hay SUM có bị nhầm không
+- filter có thiếu không
+- grouping có đúng dimension không
+
+Ví dụ:
+
+- hỏi doanh thu mà dùng `COUNT(*)` → sai
+- hỏi top khách hàng mà không order by revenue → sai
+- hỏi theo quý nhưng lọc sai tháng → sai
+
+---
+
+### 7.3.2 Data Verification
+
+ReflectorAgent kiểm tra:
+
+- kết quả 0 dòng có thật hay không
+- số lượng bản ghi có hợp lý không
+- output có quá nhỏ hoặc quá lớn bất thường không
+- dữ liệu có bị lệch do join sai không
+
+Phân biệt:
+
+| Trạng thái | Ý nghĩa |
 |---|---|
-| Query Decomposition | Chia nhỏ bài toán |
-| Relationship Mapping | Xác định JOIN path |
-| Logic Branching | Quyết định execution path |
-| Schema Reasoning | Hiểu metadata |
-| CoT Reasoning | Giải thích logic suy luận |
+| Legit Empty | thật sự không có dữ liệu |
+| Suspicious Empty | query có vấn đề |
+| Partial Result | có dữ liệu nhưng thiếu phần quan trọng |
 
 ---
 
-# 3. Query Decomposition
+### 7.3.3 Response Alignment
 
-Đây là chức năng quan trọng nhất.
+ReflectorAgent kiểm tra kết quả có trả lời đúng câu hỏi gốc không.
 
-ReasoningAgent phải biến:
+Ví dụ:
+
+User hỏi:
 
 ```text
-complex question
+Top khách hàng doanh thu cao nhất quý 1
 ```
+
+thì kết quả phải có:
+
+- ranking
+- doanh thu
+- khoảng thời gian đúng
+- entity đúng
+- không trả sang một metric khác
+
+---
+
+# 8. Quyết định của ReflectorAgent
+
+ReflectorAgent chỉ đưa ra một trong các trạng thái sau:
+
+## 8.1 FINISH
+
+Kết quả đạt yêu cầu:
+
+- đúng logic
+- đúng dữ liệu
+- đúng intent
+- đủ thông tin để format và trả user
+
+---
+
+## 8.2 RETRY
+
+Kết quả có vấn đề:
+
+- SQL sai
+- logic lệch
+- dữ liệu bất thường
+- thiếu cột
+- join sai
+
+→ cần quay lại planning hoặc reasoning để sửa.
+
+---
+
+## 8.3 ESCALATE
+
+Nếu retry nhiều lần mà vẫn lỗi:
+
+- dừng tự động
+- ghi lỗi rõ ràng
+- trả phản hồi an toàn
+- có thể yêu cầu người dùng làm rõ hoặc báo lỗi hệ thống
+
+---
+
+# 9. Self-Healing Loop
+
+## 9.1 Khái niệm
+
+Self-Healing là khả năng tự sửa sai của graph khi execution không thành công.
+
+Đây là điểm rất quan trọng vì thực tế:
+
+- SQL có thể sai
+- schema có thể thay đổi
+- dữ liệu có thể thiếu
+- query có thể join sai
+- intent ban đầu có thể chưa đủ rõ
+
+Hệ thống phải biết quay xe đúng lúc.
+
+---
+
+## 9.2 Flow self-healing
+
+```text
+ExecutionAgent
+   ↓
+Fail / Suspicious Result
+   ↓
+ReflectorAgent
+   ↓
+Retry Required
+   ↓
+PlanningAgent / ReasoningAgent
+   ↓
+New Task Queue
+   ↓
+ExecutionAgent (retry)
+```
+
+---
+
+## 9.3 Loop-back rules
+
+### Quay lại PlanningAgent khi:
+
+- task order sai
+- dependency sai
+- cần đổi chiến lược thực thi
+- cần chia task nhỏ hơn
+
+---
+
+### Quay lại ReasoningAgent khi:
+
+- logic gốc sai
+- entity sai
+- bảng chọn sai
+- nghiệp vụ hiểu sai
+- plan đúng nhưng suy luận đầu vào sai
+
+---
+
+## 9.4 Retry limit
+
+Không cho retry vô hạn.
+
+Khuyến nghị:
+
+```text
+Max Retry = 3
+```
+
+Nếu vượt quá:
+
+- dừng loop
+- log rõ lý do
+- báo thất bại có kiểm soát
+
+Mục tiêu là tránh AI bị mắc kẹt trong vòng lặp vô tận.
+
+---
+
+# 10. LearningAgent — Trí nhớ dài hạn
+
+## 10.1 Định nghĩa
+
+LearningAgent là lớp ghi nhận kinh nghiệm sau mỗi lần chạy.
+
+Nó không thay đổi model ngay lập tức, mà lưu lại:
+
+- query pattern
+- failure pattern
+- correction pattern
+- execution metadata
+- quality signals
+
+Dữ liệu này được dùng cho retrieval và cải tiến về sau.
+
+---
+
+## 10.2 Dual-Memory Architecture
+
+LearningAgent nên chia thành hai loại memory:
+
+### Positive Memory
+
+Lưu lại các mẫu thành công:
+
+- câu hỏi
+- reasoning summary
+- task plan
+- SQL cuối
+- kết quả đúng
+- model được dùng
+- điều kiện thành công
+
+Mục tiêu là lần sau gặp câu tương tự, hệ thống có thể tham chiếu lại.
+
+---
+
+### Negative Memory
+
+Lưu lại các mẫu lỗi:
+
+- SQL sai
+- join sai
+- filter sai
+- column không tồn tại
+- query trả kết quả bất thường
+- reasoning lệch nghiệp vụ
+
+Mục tiêu là lần sau hệ thống được cảnh báo trước.
+
+---
+
+## 10.3 Lưu vào pgvector
+
+Các memory này cần được vectorize và lưu vào `pgvector`.
+
+Cách này cho phép:
+
+- semantic retrieval
+- tìm pattern tương tự
+- gợi ý caution note cho ExecutionAgent
+- giảm lặp lại lỗi cũ
+
+---
+
+## 10.4 Ví dụ Positive Memory
+
+```json
+{
+  "type": "positive",
+  "question": "Top khách hàng doanh thu cao nhất quý 1",
+  "pattern": "contract -> account -> revenue ranking",
+  "sql_template": "SELECT ...",
+  "result_quality": "correct",
+  "notes": "Use v_hbl_contract and v_hbl_account, aggregate by customer"
+}
+```
+
+---
+
+## 10.5 Ví dụ Negative Memory
+
+```json
+{
+  "type": "negative",
+  "question": "Doanh thu theo khách hàng",
+  "pattern": "wrong join between contract_id and account_id",
+  "error_type": "join_mismatch",
+  "notes": "Never join account_id directly to contract_id"
+}
+```
+
+---
+
+# 11. AgentState mở rộng cho Phase 6
+
+```python
+from typing import TypedDict, List, Dict, Any, Optional
+
+class AgentState(TypedDict, total=False):
+    thread_id: str
+
+    # Phase 4
+    user_input: str
+    normalized_input: str
+    intent: str
+    entities: List[Dict[str, Any]]
+    security_check: str
+
+    # Phase 5
+    reasoning_summary: str
+    required_tables: List[str]
+    required_entities: List[str]
+    complexity: str
+    logic_plan: List[str]
+    task_queue: List[Dict[str, Any]]
+
+    # Phase 6 - Execution
+    executed_tasks: List[Dict[str, Any]]
+    sql_queries: List[str]
+    raw_results: List[Dict[str, Any]]
+    execution_status: str
+
+    # Phase 6 - Reflection
+    reflection_notes: List[str]
+    qa_decision: str  # "finish" | "retry" | "escalate"
+
+    # Phase 6 - Learning
+    memory_signals: List[Dict[str, Any]]
+    learning_tags: List[str]
+
+    # Nexus / Trace
+    trace_logs: List[str]
+    checkpoints: List[Dict[str, Any]]
+
+    # Output
+    final_response: Optional[str]
+    error_message: Optional[str]
+```
+
+---
+
+# 12. Audit & Logging
+
+## 12.1 Những gì cần log
+
+Mỗi execution cycle cần log:
+
+- thread_id
+- task_id
+- SQL sinh ra
+- model dùng để sinh SQL
+- duration
+- raw result summary
+- error details
+- reflection decision
+- retry count
+
+---
+
+## 12.2 Audit policy
+
+Không log:
+
+- API key
+- secret
+- raw sensitive payload không cần thiết
+
+Log phải vừa đủ để:
+
+- debug
+- replay
+- audit
+- cải tiến
+
+---
+
+# 13. Gợi ý schema lưu trữ
+
+## 13.1 Execution logs
+
+```sql
+CREATE SCHEMA IF NOT EXISTS audit_zone;
+
+CREATE TABLE audit_zone.execution_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    thread_id UUID NOT NULL,
+    task_id INTEGER,
+    sql_executed TEXT,
+    execution_status TEXT NOT NULL,
+    raw_results JSONB,
+    error_message TEXT,
+    duration_ms INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## 13.2 Reflection logs
+
+```sql
+CREATE TABLE audit_zone.reflection_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    thread_id UUID NOT NULL,
+    task_id INTEGER,
+    reflection_notes TEXT,
+    qa_decision TEXT NOT NULL,
+    retry_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## 13.3 Learning memory
+
+```sql
+CREATE SCHEMA IF NOT EXISTS knowledge_zone;
+
+CREATE TABLE knowledge_zone.query_patterns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pattern_type TEXT NOT NULL,
+    question_text TEXT,
+    pattern_summary TEXT,
+    sql_template TEXT,
+    embedding VECTOR,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+```sql
+CREATE TABLE knowledge_zone.failed_patterns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pattern_type TEXT NOT NULL,
+    question_text TEXT,
+    error_summary TEXT,
+    correction_note TEXT,
+    embedding VECTOR,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+# 14. LangGraph loop design
+
+```text
+PlanningAgent
+   ↓
+ExecutionAgent
+   ↓
+ReflectorAgent
+   ├── FINISH → Format Response
+   ├── RETRY  → PlanningAgent / ReasoningAgent
+   └── ESCALATE → Error Response
+```
+
+---
+
+# 15. UI impact
+
+Phase 6 phải phản ánh rõ trên sidebar và debug panel:
+
+- task nào đang chạy
+- SQL nào đang được sinh
+- kết quả có bao nhiêu dòng
+- reflector có chấp nhận không
+- có retry hay không
+- có memory được lưu không
+
+Người dùng không nên chỉ thấy “AI trả lời”, mà còn thấy:
+
+- nó đã làm gì
+- nó có kiểm tra lại không
+- nó có tự sửa không
+- nó có học gì không
+
+---
+
+# 16. Failure Handling
+
+## 16.1 SQL lỗi cú pháp
+
+- ghi execution log
+- chuyển ReflectorAgent
+- đề xuất retry
+
+---
+
+## 16.2 Column not found
+
+- ghi lỗi rõ ràng
+- nếu có thể, quay lại planning/reasoning
+- sinh SQL mới
+
+---
+
+## 16.3 Empty result bất thường
+
+- kiểm tra logic
+- xác định legit empty hay suspicious empty
+- quyết định retry hoặc finish
+
+---
+
+## 16.4 Retry vượt ngưỡng
+
+- dừng loop
+- báo lỗi an toàn
+- không retry vô hạn
+
+---
+
+# 17. Suggested folder structure
+
+```plaintext
+/project-root
+├── core/
+│   ├── agents/
+│   │   ├── execution_agent.py
+│   │   ├── reflector_agent.py
+│   │   └── learning_agent.py
+│   │
+│   ├── graph/
+│   │   ├── workflow.py
+│   │   └── nodes/
+│   │       ├── execution_node.py
+│   │       ├── reflection_node.py
+│   │       └── learning_node.py
+│   │
+│   ├── execution/
+│   │   ├── sql_generator.py
+│   │   ├── task_runner.py
+│   │   └── result_collector.py
+│   │
+│   ├── reflection/
+│   │   ├── logic_checker.py
+│   │   ├── empty_result_checker.py
+│   │   └── decision_engine.py
+│   │
+│   ├── learning/
+│   │   ├── memory_writer.py
+│   │   ├── memory_retriever.py
+│   │   └── pattern_vectorizer.py
+│   │
+│   └── audit/
+│       ├── execution_logger.py
+│       ├── reflection_logger.py
+│       └── learning_logger.py
+```
+
+---
+
+# 18. Success Criteria
+
+Phase 6 được xem là hoàn thành khi:
+
+- ExecutionAgent chạy đúng task queue
+- SQL được sinh và chạy an toàn
+- ReflectorAgent phát hiện được lỗi logic
+- hệ thống retry có kiểm soát
+- loop-back hoạt động khi cần
+- memory thành công và thất bại được lưu
+- pgvector được dùng để tra cứu pattern
+- toàn bộ hành vi có audit và trace rõ ràng
+
+---
+
+# 19. Kết luận
+
+Phase 6 là giai đoạn biến hệ thống từ:
+
+- biết phân tích
+- biết lập kế hoạch
 
 thành:
 
-```text
-small executable tasks
-```
+- biết thực thi
+- biết kiểm tra
+- biết sửa lỗi
+- biết học từ kinh nghiệm
 
----
+Đây là phase tạo ra sự khác biệt giữa một AI chỉ “trả lời được” và một AI có thể **vận hành bền vững trong môi trường thực tế**.
 
-# 3.1 Example Decomposition
-
-Input:
-
-```text
-Tìm khách hàng mua nhiều nhất tháng 5
-```
-
----
-
-## Reasoning Output
+Nếu Phase 4 là đầu vào sạch, Phase 5 là tư duy có cấu trúc, thì Phase 6 chính là:
 
 ```text
-Step 1:
-Lấy hợp đồng tháng 5
-
-Step 2:
-Group theo Account
-
-Step 3:
-SUM doanh thu
-
-Step 4:
-Sort descending
-
-Step 5:
-Lấy Top 1
+Hành động có kiểm soát + Phản biện + Tiến hóa
 ```
 
----
-
-# 3.2 Why Decomposition Matters
-
-Nếu AI cố xử lý mọi thứ một lần:
-
-- reasoning yếu
-- SQL phức tạp
-- dễ hallucination
-- khó debug
-
-Decomposition giúp:
-
-- modular execution
-- explainability
-- retry dễ hơn
-- planning ổn định hơn
-
----
-
-# 4. Relationship Mapping
-
-ReasoningAgent phải hiểu:
-
-- bảng nào liên quan
-- foreign key nào dùng để JOIN
-- choice table map ra sao
-
----
-
-# 4.1 Metadata Awareness
-
-ReasoningAgent không đoán schema.
-
-Nó dùng:
-
-```text
-db.json metadata
-```
-
-để infer relationships.
-
----
-
-# 4.2 Example Relationship Mapping
-
-Input:
-
-```text
-Contacts thuộc Finance Accounts ở Vietnam
-```
-
----
-
-## Required Relationships
-
-```text
-hbl_contact
-    ↓
-hbl_account
-    ↓
-industry mapping
-    ↓
-country mapping
-```
-
----
-
-# 4.3 Example JOIN Reasoning
-
-```text
-hbl_contact.hbl_contact_accountid
-    →
-hbl_account.hbl_accountid
-```
-
----
-
-# 5. Logic Branching
-
-ReasoningAgent quyết định:
-
-- dùng SQL mới
-- hay reuse memory pattern
-
----
-
-# 5.1 Example Branching
-
-## Simple Query
-
-```text
-→ Generate SQL directly
-```
-
----
-
-## Complex Nested Query
-
-```text
-→ Check Learning Memory
-→ Reuse successful pattern
-```
-
----
-
-# 6. Model Selection
-
-## Recommended Model
-
-```text
-groq/llama3-70b-8192
-```
-
----
-
-# 6.1 Why Groq
-
-Reasoning cần:
-
-- tốc độ cực nhanh
-- CoT reasoning
-- structured decomposition
-- low latency
-
-Groq phù hợp vì:
-
-- LPU architecture
-- ultra-fast inference
-- near realtime reasoning
-
----
-
-# 6.2 Recommended Temperature
-
-```python
-temperature = 0.1
-```
-
-Lý do:
-
-- stable logic
-- deterministic output
-- ít hallucination
-
----
-
-# 7. Structured Output Design
-
-ReasoningAgent bắt buộc trả JSON.
-
----
-
-# 7.1 Output Contract
-
-```json
-{
-  "thought_process": "",
-  "required_tables": [],
-  "steps": [],
-  "complexity": ""
-}
-```
-
----
-
-# 7.2 Why Structured Reasoning Matters
-
-Nếu output là text tự do:
-
-- PlanningAgent khó parse
-- khó automation
-- khó debug
-
-JSON giúp:
-
-- deterministic orchestration
-- machine-readable planning
-- execution stability
-
----
-
-# 8. Implementation
-
-## File: `core/agents/reasoning.py`
-
-```python
-from litellm import completion
-
-import json
-
-def reasoning_agent_node(state):
-
-    """
-    ReasoningAgent:
-    - query decomposition
-    - relationship mapping
-    - chain-of-thought reasoning
-    """
-
-    intent = state["intent"]
-
-    refined_query = state["input"]
-
-    schema_context = """
-
-    Tables:
-    - hbl_account
-    - hbl_contact
-    - hbl_opportunities
-    - hbl_contract
-
-    Relationships:
-    - contact.accountid -> account.id
-    - contract.opportunityid -> opportunity.id
-    """
-
-    prompt = f"""
-    Bạn là ReasoningAgent.
-
-    Nhiệm vụ:
-    Phân tích logic CRM query.
-
-    Context Schema:
-    {schema_context}
-
-    User Request:
-    {refined_query}
-
-    Intent:
-    {intent}
-
-    Hãy suy luận từng bước:
-
-    1. Xác định bảng liên quan.
-    2. Xác định JOIN path.
-    3. Xác định filtering conditions.
-    4. Nếu query lồng nhau:
-       chia thành Step 1, Step 2...
-
-    Trả về JSON:
-
-    {{
-        "thought_process": str,
-
-        "required_tables": list,
-
-        "steps": [
-            {{
-                "step": 1,
-                "description": str,
-                "target": "sql_generation"
-            }}
-        ],
-
-        "complexity": "simple" | "nested"
-    }}
-    """
-
-    response = completion(
-
-        model="groq/llama3-70b-8192",
-
-        messages=[
-            {
-                "role": "system",
-                "content": prompt
-            }
-        ],
-
-        temperature=0.1
-    )
-
-    logic_plan = json.loads(
-        response.choices[0].message.content
-    )
-
-    # Build trace
-    new_trace = {
-
-        "node": "ReasoningAgent",
-
-        "msg": (
-            f"💡 Suy luận: "
-            f"{logic_plan['thought_process'][:100]}..."
-            f"(Complexity: "
-            f"{logic_plan['complexity']})"
-        )
-    }
-
-    return {
-
-        "logic_plan": logic_plan,
-
-        "trace": [new_trace],
-
-        "next_step": "planning"
-    }
-```
-
----
-
-# 9. Real-World Scenario
-
-## User Question
-
-```text
-Thống kê doanh thu tháng 1 của các account
-thuộc ngành Finance ở Vietnam
-```
-
----
-
-# 9.1 Reasoning Process
-
-ReasoningAgent sẽ suy luận:
-
----
-
-## Required Tables
-
-```text
-hbl_contract
-hbl_account
-sys_choice_options
-```
-
----
-
-## Logic Steps
-
-```text
-Step 1:
-Resolve choice_code cho:
-- Finance
-- Vietnam
-
-Step 2:
-Join hbl_account với:
-- industry mapping
-- country mapping
-
-Step 3:
-Join account → opportunity → contract
-
-Step 4:
-SUM doanh thu tháng 1
-```
-
----
-
-# 9.2 Example Output JSON
-
-```json
-{
-  "thought_process": "Need to resolve Finance and Vietnam labels into choice codes before joining account and contract tables.",
-
-  "required_tables": [
-    "hbl_account",
-    "hbl_contract",
-    "sys_choice_options"
-  ],
-
-  "steps": [
-    {
-      "step": 1,
-      "description": "Resolve choice codes",
-      "target": "sql_generation"
-    },
-    {
-      "step": 2,
-      "description": "Join account and contract tables",
-      "target": "aggregation"
-    }
-  ],
-
-  "complexity": "nested"
-}
-```
-
----
-
-# 10. Chain-of-Thought (CoT)
-
-Đây là đặc điểm cực kỳ quan trọng.
-
-ReasoningAgent phải:
-
-```text
-explain WHY
-```
-
-không chỉ:
-
-```text
-generate output
-```
-
----
-
-# 10.1 Why CoT Matters
-
-Giúp:
-
-- debug nhanh
-- explain AI decisions
-- visualize reasoning
-- reduce hallucination
-
----
-
-# 10.2 Example CoT
-
-```text
-Need to resolve label Finance into choice_code first
-because account table stores only codes.
-```
-
----
-
-# 11. Complexity Classification
-
-ReasoningAgent phải đánh giá:
-
-```text
-simple
-```
-
-hoặc:
-
-```text
-nested
-```
-
----
-
-# 11.1 Simple Query Example
-
-```text
-List all accounts
-```
-
-→ `simple`
-
----
-
-# 11.2 Nested Query Example
-
-```text
-Top revenue accounts in Vietnam ngành Finance
-```
-
-→ `nested`
-
----
-
-# 12. Traceability
-
-Mọi reasoning phải được trace.
-
----
-
-# 12.1 Example Trace
-
-```json
-{
-  "node": "ReasoningAgent",
-  "msg": "💡 Suy luận: Resolve Finance label before JOIN..."
-}
-```
-
----
-
-# 12.2 Streamlit Sidebar Example
-
-```text
-[ReasoningAgent]
-
-Complexity: nested
-
-Required Tables:
-- hbl_account
-- hbl_contract
-- sys_choice_options
-
-Execution Steps:
-1. Resolve labels
-2. Build JOIN path
-3. Aggregate revenue
-```
-
----
-
-# 13. Integration with PlanningAgent
-
-ReasoningAgent KHÔNG execute.
-
-Nó chỉ:
-
-- build logic plan
-- handoff execution blueprint
-
----
-
-# 13.1 Handoff Contract
-
-PlanningAgent sẽ nhận:
-
-```json
-{
-  "logic_plan": {}
-}
-```
-
-để:
-
-- build tasks
-- prioritize execution
-- generate workflow
-
----
-
-# 14. Recommended Graph Flow
-
-```text
-START
-  ↓
-IngestAgent
-  ↓
-ReasoningAgent
-  ↓
-PlanningAgent
-```
-
----
-
-# 15. Suggested Folder Structure
-
-```text
-/core
-├── agents/
-│   ├── ingest.py
-│   └── reasoning.py
-│
-├── prompts/
-│   └── reasoning_prompt.py
-│
-├── graph/
-│   └── graph.py
-│
-└── state.py
-```
-
----
-
-# 16. Recommended Future Improvements
-
-| Current | Future |
-|---|---|
-| Static schema context | Dynamic schema retrieval |
-| Simple CoT | Graph reasoning |
-| Manual decomposition | Recursive planning |
-| Static JOIN inference | Semantic relationship inference |
-
----
-
-# 17. Testing Strategy
-
-## Test Categories
-
-| Test | Purpose |
-|---|---|
-| Decomposition test | Verify task splitting |
-| JOIN reasoning test | Verify relationship mapping |
-| Complexity test | Detect nested queries |
-| CoT trace test | Verify explainability |
-
----
-
-# 17.1 Example JOIN Test
-
-```python
-def test_join_reasoning():
-
-    state = {
-        "input": (
-            "Contacts thuộc Finance accounts"
-        ),
-        "intent": "query"
-    }
-
-    result = reasoning_agent_node(state)
-
-    assert (
-        "hbl_account"
-        in result["logic_plan"]["required_tables"]
-    )
-```
-
----
-
-# 18. Phase 6 Completion Checklist
-
-## Core Logic
-
-- [ ] Implement `reasoning_agent_node`
-- [ ] Connect Groq Llama3
-- [ ] Parse structured JSON
-- [ ] Append trace logs
-
----
-
-## Query Reasoning
-
-- [ ] Decompose nested queries
-- [ ] Detect required tables
-- [ ] Infer JOIN relationships
-- [ ] Build execution steps
-
----
-
-## Chain-of-Thought
-
-- [ ] Generate explainable reasoning
-- [ ] Save thought_process
-- [ ] Display reasoning in UI
-
----
-
-## Integration
-
-- [ ] Pass logic_plan to PlanningAgent
-- [ ] Maintain AgentState consistency
-- [ ] Handle nested queries correctly
-
----
-
-# 19. Expected Outcome After Phase 6
-
-Sau khi hoàn thành:
-
-Hệ thống sẽ có:
-
-- Intelligent query decomposition
-- Metadata-aware reasoning
-- Dynamic relationship mapping
-- Explainable AI reasoning
-- Structured execution planning
-- Ultra-fast Groq-powered thinking
-
-AI Agent sẽ có khả năng:
-
-- hiểu bài toán phức tạp
-- tự bẻ nhỏ task
-- tự xác định JOIN path
-- explain logic reasoning
-- build execution blueprint
-- giảm hallucination SQL
+Và chính ba lớp này là nền để Agentic CRM trở thành một hệ thống thật sự sống được trong production.

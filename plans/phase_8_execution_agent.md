@@ -1,608 +1,630 @@
-# Phase 8: ExecutionAgent Layer (The Doer)
+# Phase 8 — Finalization, Governance & Project Closure
+## Agentic CRM System
 
-## 1. Overview
+---
 
-ExecutionAgent là:
+# 1. Tổng quan Phase 8
+
+Phase 8 là giai đoạn chốt toàn bộ dự án Agentic CRM.
+
+Nếu các phase trước tập trung vào:
+
+- xây dựng hạ tầng
+- xây dựng agent
+- reasoning
+- planning
+- execution
+- self-healing
+- optimization
+- scalability
+
+thì Phase 8 tập trung vào:
+
+- hoàn thiện hệ thống
+- chuẩn hóa vận hành
+- kiểm thử tổng thể
+- governance
+- deployment readiness
+- documentation
+- handover
+- project closure
+
+Đây là bước biến hệ thống từ:
 
 ```text
-The Doer Layer
+Prototype / Internal System
 ```
 
-Nếu:
-
-- IngestAgent = hiểu yêu cầu
-- ReasoningAgent = suy luận
-- PlanningAgent = lập kế hoạch
-
-thì:
+thành:
 
 ```text
-ExecutionAgent = biến kế hoạch thành hành động thực tế
+Production-Ready Agentic CRM Platform
 ```
 
 ---
 
-# 1.1 Core Philosophy
+# 2. Mục tiêu (Objectives)
 
-ExecutionAgent không “nghĩ nhiều”.
+## 2.1 System Hardening
 
-Nó chỉ:
+Đảm bảo toàn bộ hệ thống:
 
-```text
-PLAN → SQL → EXECUTE → RESULT
-```
+- ổn định
+- nhất quán
+- bảo mật
+- dễ vận hành
+- dễ maintain
+- không còn module rời rạc
 
 ---
 
-# 2. Responsibilities of ExecutionAgent
+## 2.2 End-to-End Validation
 
-| Responsibility | Description |
+Xác minh toàn bộ luồng hoạt động:
+
+```text
+User Input
+→ Ingest
+→ Reasoning
+→ Planning
+→ Execution
+→ Reflection
+→ Learning
+→ Optimization
+```
+
+đều hoạt động chính xác và có thể trace được.
+
+---
+
+## 2.3 Governance & Operational Readiness
+
+Thiết lập cơ chế:
+
+- quản trị hệ thống
+- phân quyền
+- audit
+- release control
+- configuration management
+- security governance
+
+---
+
+## 2.4 Documentation & Handover
+
+Chuẩn hóa tài liệu để:
+
+- bàn giao
+- mở rộng
+- onboarding
+- bảo trì
+- audit nội bộ
+
+---
+
+## 2.5 Production Closure
+
+Đảm bảo dự án có thể:
+
+- deploy production
+- monitor ổn định
+- recover khi lỗi
+- vận hành dài hạn
+- chuyển sang maintenance mode
+
+---
+
+# 3. Vai trò của Phase 8
+
+Phase 8 là lớp “đóng nắp” toàn bộ hệ thống.
+
+Nếu các phase trước tạo ra:
+
+- intelligence
+- memory
+- orchestration
+- execution
+- optimization
+
+thì Phase 8 tạo ra:
+
+- stability
+- governance
+- deployment readiness
+- maintainability
+- operational maturity
+
+---
+
+# 4. Final System Validation
+
+## 4.1 End-to-End Testing
+
+Kiểm tra toàn bộ workflow:
+
+- ingest flow
+- reasoning flow
+- planning flow
+- execution flow
+- reflection flow
+- learning flow
+- retry flow
+- fallback flow
+- recovery flow
+
+---
+
+## 4.2 Functional Validation
+
+Xác nhận:
+
+- intent detection đúng
+- entity extraction đúng
+- SQL đúng
+- output đúng business logic
+- reflection hoạt động
+- retry hoạt động
+- memory retrieval đúng
+
+---
+
+## 4.3 Regression Testing
+
+Đảm bảo:
+
+- sửa bug không phá logic cũ
+- thay đổi prompt không phá pipeline
+- update model không đổi behavior nguy hiểm
+- optimization không làm sai kết quả
+
+---
+
+## 4.4 Multi-Tenant Validation
+
+Kiểm tra:
+
+- tenant isolation
+- RLS enforcement
+- org separation
+- state separation
+- memory isolation
+
+---
+
+# 5. Security Finalization
+
+## 5.1 Security Checklist
+
+Xác nhận:
+
+- prompt injection blocked
+- SQL injection blocked
+- secrets protected
+- RBAC hoạt động
+- RLS hoạt động
+- MCP tool restriction hoạt động
+
+---
+
+## 5.2 Secret Management
+
+Tất cả secrets phải nằm trong:
+
+```text
+.env
+```
+
+hoặc secret manager.
+
+Không hardcode:
+
+- API keys
+- DB credentials
+- provider tokens
+- JWT secrets
+
+---
+
+## 5.3 Environment Separation
+
+Tách riêng:
+
+- development
+- staging
+- production
+
+Không dùng chung credentials.
+
+---
+
+# 6. Governance Layer
+
+## 6.1 Role-Based Access Control (RBAC)
+
+Các role đề xuất:
+
+| Role | Quyền |
 |---|---|
-| SQL Generation | Sinh câu lệnh SQL |
-| Task Execution | Thực thi từng task |
-| Data Retrieval | Lấy dữ liệu từ PostgreSQL |
-| Error Handling | Bắt lỗi SQL |
-| Self-Healing | Tự sửa query |
-| Trace Logging | Ghi lại execution flow |
+| Admin | toàn quyền |
+| Developer | debug & deploy |
+| Operator | monitor & support |
+| Analyst | xem analytics |
+| End User | chat & reports |
 
 ---
 
-# 3. Execution Flow (Master Pipeline)
+## 6.2 Audit Governance
+
+Mọi hành động quan trọng phải được log:
+
+- login
+- query execution
+- prompt execution
+- model routing
+- fallback
+- retry
+- config changes
+
+---
+
+## 6.3 Change Management
+
+Mọi thay đổi production phải có:
+
+- review
+- approval
+- versioning
+- rollback plan
+- release notes
+
+---
+
+# 7. Deployment Readiness
+
+## 7.1 Production Checklist
+
+Trước khi deploy:
+
+- migrations pass
+- env validated
+- RLS enabled
+- audit tables ready
+- vector extension enabled
+- MCP services healthy
+- routing policies active
+
+---
+
+## 7.2 Infrastructure Validation
+
+Kiểm tra:
+
+- PostgreSQL health
+- pgvector health
+- Flask API health
+- Streamlit UI health
+- MCP availability
+- model provider connectivity
+
+---
+
+## 7.3 Backup & Recovery
+
+Phải có:
+
+- DB backup
+- vector backup
+- checkpoint backup
+- restore strategy
+- rollback strategy
+
+---
+
+# 8. Observability Finalization
+
+## 8.1 Monitoring Coverage
+
+Theo dõi:
+
+- latency
+- token usage
+- API cost
+- retry rate
+- fallback rate
+- SQL latency
+- memory retrieval quality
+
+---
+
+## 8.2 Incident Monitoring
+
+Phải phát hiện được:
+
+- provider outage
+- DB slowdown
+- memory corruption
+- retry storms
+- abnormal token spikes
+
+---
+
+## 8.3 Alerting Rules
+
+Thiết lập cảnh báo khi:
+
+- latency vượt ngưỡng
+- retry tăng đột biến
+- provider fail liên tục
+- SQL timeout quá nhiều
+- token usage bất thường
+
+---
+
+# 9. Documentation Package
+
+## 9.1 Architecture Documentation
+
+Bao gồm:
+
+- system architecture
+- agent flow
+- LangGraph flow
+- MCP architecture
+- memory architecture
+- routing architecture
+
+---
+
+## 9.2 Developer Documentation
+
+Bao gồm:
+
+- local setup
+- folder structure
+- coding conventions
+- testing workflow
+- deployment process
+
+---
+
+## 9.3 Operations Documentation
+
+Bao gồm:
+
+- monitoring guide
+- recovery guide
+- backup guide
+- rollback guide
+- incident response guide
+
+---
+
+## 9.4 Business Documentation
+
+Bao gồm:
+
+- business capabilities
+- supported workflows
+- limitations
+- future roadmap
+- operational expectations
+
+---
+
+# 10. Release Management
+
+## 10.1 Versioning Strategy
+
+Áp dụng versioning:
 
 ```text
-PlanningAgent
-      ↓
-ExecutionAgent
-      ↓
-SQL Generation (Groq)
-      ↓
-Tool Execution (Postgres)
-      ↓
-Success / Failure
-      ↓
-LearningAgent or PlanningAgent (retry loop)
+vMajor.Minor.Patch
 ```
 
----
-
-# 4. Dynamic SQL Generation
-
-ExecutionAgent không hardcode SQL.
-
-Nó:
+Ví dụ:
 
 ```text
-LLM generates SQL on demand
+v1.0.0
 ```
 
 ---
 
-# 4.1 Model Choice
+## 10.2 Release Freeze
+
+Khi chuẩn bị production:
+
+- khóa feature lớn
+- chỉ fix critical bug
+- tránh thay đổi kiến trúc
+
+---
+
+## 10.3 Release Notes
+
+Mỗi release cần:
+
+- summary
+- added features
+- fixed bugs
+- breaking changes
+- migration notes
+
+---
+
+# 11. Maintenance Mode
+
+## 11.1 Sau khi đóng dự án
+
+Hệ thống chuyển sang:
+
+- maintenance
+- monitoring
+- support
+- optimization nhỏ
+- periodic review
+
+---
+
+## 11.2 Không nên
+
+- thay đổi kiến trúc lớn
+- đổi memory strategy liên tục
+- đổi routing logic không kiểm soát
+
+---
+
+# 12. Handover Strategy
+
+## 12.1 Handover Package
+
+Bàn giao phải gồm:
+
+- source code
+- documentation
+- env template
+- migration scripts
+- deployment scripts
+- runbooks
+- monitoring guides
+
+---
+
+## 12.2 Knowledge Transfer
+
+Team tiếp nhận phải hiểu:
+
+- agent flow
+- state flow
+- memory flow
+- retry flow
+- fallback flow
+- observability flow
+
+---
+
+# 13. Suggested Final Folder Structure
 
 ```text
-groq/llama3-70b-8192
-```
-
----
-
-# 4.2 Why Groq
-
-- cực nhanh (LPU inference)
-- mạnh về code generation
-- latency thấp
-- phù hợp real-time execution
-
----
-
-# 4.3 SQL Generation Strategy
-
-ExecutionAgent sử dụng:
-
-- task description
-- schema metadata
-- relationship mapping
-
-để generate SQL.
-
----
-
-# 5. Self-Healing Mechanism
-
-Đây là phần quan trọng nhất của Execution Layer.
-
----
-
-# 5.1 Failure Scenario
-
-```text
-SQL ERROR:
-column "hbl_account_name" does not exist
-```
-
----
-
-# 5.2 Self-Healing Loop
-
-ExecutionAgent sẽ:
-
-1. đọc error log
-2. đối chiếu schema
-3. regenerate SQL
-4. retry execution
-
----
-
-# 5.3 Healing Flow
-
-```text
-SQL FAIL
-  ↓
-Capture DB error
-  ↓
-Re-check schema
-  ↓
-Regenerate SQL (Groq)
-  ↓
-Retry execution
-```
-
----
-
-# 6. Implementation
-
-## File: `core/agents/execution.py`
-
-```python
-from litellm import completion
-import json
-
-from core.tools.sql_executor import execute_business_query
-
-
-def execution_agent_node(state):
-
-    """
-    ExecutionAgent:
-    - generate SQL
-    - execute query
-    - handle errors
-    - self-healing loop
-    """
-
-    plan = state["plan"]
-
-    completed = state.get(
-        "steps_completed",
-        []
-    )
-
-    current_task = plan[
-        len(completed)
-    ]
-
-    prompt = f"""
-    Bạn là ExecutionAgent.
-
-    Nhiệm vụ:
-    Viết SQL cho task.
-
-    Task:
-    {current_task['description']}
-
-    Schema:
-    {json.dumps(state.get('metadata', {}))}
-
-    Rules:
-    - chỉ dùng bảng:
-      hbl_account,
-      hbl_contact,
-      hbl_opportunities,
-      hbl_contract
-
-    - nếu JOIN:
-      dùng foreign key đúng
-
-    Output:
-    CHỈ trả về SQL
-    """
-
-    response = completion(
-
-        model="groq/llama3-70b-8192",
-
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-
-    sql_command = response.choices[
-        0
-    ].message.content.strip()
-
-    # EXECUTE SQL
-    try:
-
-        result = execute_business_query(
-            sql_command
-        )
-
-        status = "success"
-
-    except Exception as e:
-
-        result = str(e)
-
-        status = "failed"
-
-    new_trace = {
-
-        "node": "ExecutionAgent",
-
-        "msg": (
-            f"🛠️ SQL: "
-            f"{sql_command[:60]}... "
-            f"| Status: {status}"
-        )
-    }
-
-    # STATE UPDATE
-    return {
-
-        "results": [result],
-
-        "sql_executed": sql_command,
-
-        "steps_completed": [
-            current_task["task_id"]
-        ],
-
-        "trace": [new_trace],
-
-        "next_step":
-            "learning"
-            if status == "success"
-            else "planning"
-    }
-```
-
----
-
-# 7. SQL Execution Tool Layer
-
-ExecutionAgent KHÔNG truy cập DB trực tiếp.
-
-Nó phải đi qua:
-
-```text
-Tool Layer (Phase 4)
-```
-
----
-
-# 7.1 Tool Responsibilities
-
-- validate SQL
-- block dangerous queries
-- execute SELECT
-- return JSON result
-
----
-
-# 8. Self-Healing Strategy (Master Feature)
-
----
-
-# 8.1 Retry Cycle
-
-```text
-Attempt 1 → FAIL
-   ↓
-Analyze error
-   ↓
-Attempt 2 → FIXED
-```
-
----
-
-# 8.2 Healing Prompt Strategy
-
-ExecutionAgent sẽ re-prompt:
-
-```text
-Fix SQL based on schema + error log
-```
-
----
-
-# 8.3 Example Repair Prompt
-
-```text
-Column hbl_account_name not found.
-
-Available columns:
-- hbl_account_name
-- hbl_accountid
-
-Rewrite SQL correctly.
-```
-
----
-
-# 9. Real-World Scenario
-
-## User Request
-
-```text
-Top revenue accounts by AM Sales
-```
-
----
-
-# 9.1 Execution Steps
-
-### Step 1: Generate SQL
-
-```sql
-SELECT am_salesid, SUM(revenue)
-FROM hbl_contract
-GROUP BY am_salesid;
-```
-
----
-
-### Step 2: Execute
-
-```text
-SUCCESS
-```
-
----
-
-### Step 3: Return Result
-
-```json
-[
-  {"am_sales": "John", "revenue": 100000}
-]
-```
-
----
-
-# 9.2 Failure Scenario
-
-### Wrong SQL
-
-```sql
-SELECT hbl_account_name FROM hbl_account;
-```
-
-### Error
-
-```text
-column does not exist
-```
-
----
-
-### Self-Healing Fix
-
-```sql
-SELECT name FROM hbl_account;
-```
-
----
-
-# 10. Traceability
-
-ExecutionAgent phải log:
-
----
-
-## Example Trace
-
-```json
-{
-  "node": "ExecutionAgent",
-  "msg": "🛠️ Executed SQL successfully | Status: success"
-}
-```
-
----
-
-# 10.1 UI Visibility
-
-Streamlit hiển thị:
-
-```text
-🛠️ SQL Executed:
-SELECT SUM(revenue) ...
-
-Status: SUCCESS
-```
-
----
-
-# 11. Fallback Strategy
-
-Nếu Groq fail:
-
----
-
-## Fallback LLM
-
-| Model | Role |
-|---|---|
-| Claude 3.5 Sonnet | SQL repair |
-| GPT-4.1 | fallback reasoning |
-| Gemini | backup generation |
-
----
-
-# 12. Integration with PlanningAgent
-
-ExecutionAgent có thể:
-
-```text
-FAIL → PlanningAgent
-```
-
----
-
-# 12.1 Retry Loop
-
-```text
-Execution FAIL
-  ↓
-PlanningAgent sửa task
-  ↓
-Execution retry
-```
-
----
-
-# 13. State Updates
-
-ExecutionAgent cập nhật:
-
-| Field | Purpose |
-|---|---|
-| sql_executed | SQL thực tế |
-| results | output data |
-| steps_completed | progress |
-| trace | debug log |
-
----
-
-# 14. Recommended Folder Structure
-
-```text
-/core
-├── agents/
-│   ├── execution.py
+/project-root
+├── apps/
+│   ├── api/
+│   └── web/
 │
-├── tools/
-│   └── sql_executor.py
+├── core/
+│   ├── agents/
+│   ├── graph/
+│   ├── prompts/
+│   ├── tools/
+│   ├── optimization/
+│   ├── observability/
+│   ├── routing/
+│   └── learning/
+│
+├── data/
+│   ├── migration/
+│   ├── schema/
+│   ├── metadata/
+│   └── backups/
+│
+├── docs/
+│   ├── architecture/
+│   ├── deployment/
+│   ├── operations/
+│   ├── security/
+│   └── handover/
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── regression/
+│   └── e2e/
+│
+├── scripts/
+│   ├── deploy/
+│   ├── backup/
+│   ├── restore/
+│   └── monitor/
+│
+├── runbooks/
+│   ├── rollback.md
+│   ├── incident_response.md
+│   └── recovery.md
+│
+├── audit/
+│
+├── .env
+├── .env.example
+├── requirements.txt
+└── docker-compose.yml
 ```
 
 ---
 
-# 15. Testing Strategy
+# 14. Final Acceptance Criteria
 
-## 15.1 SQL Generation Test
+Phase 8 được xem là hoàn thành khi:
 
-```python
-def test_sql_generation():
-
-    state = {
-        "plan": [
-            {
-                "task_id": 1,
-                "description": "Get accounts"
-            }
-        ],
-        "steps_completed": []
-    }
-
-    result = execution_agent_node(state)
-
-    assert "sql_executed" in result
-```
+- toàn bộ workflow hoạt động ổn định
+- retry/fallback hoạt động đúng
+- observability đầy đủ
+- RLS hoạt động đúng
+- documentation hoàn chỉnh
+- deployment pass
+- recovery pass
+- governance pass
+- handover pass
 
 ---
 
-## 15.2 Failure Handling Test
+# 15. Project Closure Criteria
 
-```python
-def test_sql_failure():
+Dự án được xem là hoàn tất khi:
 
-    # simulate invalid SQL
-
-    assert True
-```
-
----
-
-## 15.3 Self-Healing Test
-
-```python
-def test_self_healing():
-
-    # simulate error → retry
-
-    assert True
-```
+- production ready
+- deployable
+- maintainable
+- observable
+- secure
+- scalable
+- documented
+- handover-ready
 
 ---
 
-# 16. Checklist Phase 8
+# 16. Kết luận
 
-## Core Execution
-
-- [ ] Implement `execution_agent_node`
-- [ ] Connect Groq Llama3
-- [ ] Integrate SQL tool execution
-- [ ] Handle task-by-task execution
-
----
-
-## Error Handling
-
-- [ ] Capture Postgres errors
-- [ ] Retry failed SQL
-- [ ] Re-generate query
-- [ ] Loop back to PlanningAgent
-
----
-
-## Self-Healing
-
-- [ ] Detect invalid columns
-- [ ] Fix schema mismatch
-- [ ] Re-execute automatically
-
----
-
-## Observability
-
-- [ ] Trace SQL in UI
-- [ ] Log execution status
-- [ ] Show success/failure steps
-
----
-
-# 17. Expected Outcome After Phase 8
-
-Sau Phase 8, hệ thống đạt:
-
----
-
-## Core Capabilities
-
-- AI tự viết SQL real-time
-- AI tự chạy query PostgreSQL
-- AI tự sửa SQL khi lỗi
-- AI execute multi-step tasks
-- AI trace toàn bộ execution flow
-
----
-
-## System Behavior
+Phase 8 là bước cuối cùng biến Agentic CRM từ:
 
 ```text
-User asks → AI plans → AI writes SQL → AI executes → AI fixes errors → AI returns result
+Một hệ thống AI thử nghiệm
 ```
 
----
-
-## Final Result
-
-ExecutionAgent biến hệ thống thành:
+thành:
 
 ```text
-Fully autonomous SQL execution engine
+Một nền tảng Agentic CRM production-grade hoàn chỉnh
 ```
 
----
+Đây là phase giúp hệ thống:
+
+- ổn định
+- có governance
+- có quy trình vận hành
+- có khả năng bàn giao
+- có khả năng bảo trì dài hạn
+- có khả năng mở rộng enterprise
+
+Nếu các phase trước tạo ra:
+
+- tư duy
+- trí nhớ
+- khả năng suy luận
+- khả năng thực thi
+- khả năng tự sửa
+- khả năng tối ưu
+
+thì Phase 8 là lớp cuối cùng giúp toàn bộ những năng lực đó trở thành:
+
+```text
+Một sản phẩm thực tế có thể vận hành lâu dài
+```
