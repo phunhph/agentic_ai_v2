@@ -10,17 +10,17 @@ Dưới đây là sơ đồ luồng dữ liệu (Data Flow) và tương tác gi�
 
 ```mermaid
 flowchart TD
-    subgraph Client Layer
+    subgraph ClientLayer ["Client Layer"]
         UI[Streamlit Web App]
         API[Flask API /v1/agent/chat]
     end
 
-    subgraph Security & Access Layer
+    subgraph SecurityLayer ["Security & Access Layer"]
         TG[TenantGuard: Session Auth]
         RLS[RLSManager: Row-Level Security]
     end
 
-    subgraph LangGraph Runtime (Agent Pipeline)
+    subgraph LangGraphRuntime ["LangGraph Runtime (Agent Pipeline)"]
         IA[IngestAgent: Language Detect & Normalize]
         RA[ReasoningAgent: Intent & Complexity Analysis]
         PA[PlanningAgent: Task Decomposition]
@@ -29,13 +29,13 @@ flowchart TD
         LA[LearningAgent: Memory & Feedback]
     end
 
-    subgraph Logic & Optimization Layer
+    subgraph LogicLayer ["Logic & Optimization Layer"]
         CR[CostRouter: Budget & Fallback]
         CO[ContextOptimizer: Schema Pruning]
         RP[RetryPolicy: Backoff Management]
     end
 
-    subgraph Data & Storage Layer
+    subgraph DataLayer ["Data & Storage Layer"]
         DB[(PostgreSQL)]
         MCP[MCP Tool: Secure SQL Execution]
         Audit[Audit Logs & Metrics]
