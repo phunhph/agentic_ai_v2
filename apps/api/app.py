@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 import os
 import sys
 import time
@@ -13,6 +14,15 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
+# Configure logging to show all debug and info messages
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+    ]
+)
+
 from core.agents.ingest_agent import IngestAgent
 from core.graph.langgraph_runtime import LangGraphRuntime
 from core.utils.infra.audit import log_agent_event
@@ -21,6 +31,10 @@ from core.utils.infra.db import get_connection, query
 from core.utils.infra.metrics import log_metric
 
 app = Flask(__name__)
+
+# Flask's logger
+app.logger.setLevel(logging.INFO)
+
 runtime = LangGraphRuntime()
 ingest_agent = IngestAgent()
 checkpoint_store = CheckpointStore()
@@ -45,65 +59,74 @@ def ready() -> tuple[dict[str, str], int]:
 
 @app.route("/v1/agent/chat", methods=["POST"])
 def chat() -> tuple[dict[str, Any], int]:
-    payload = request.get_json(force=True, silent=True)
-    if not payload:
-        return {"error": "JSON payload required"}, 400
+    thread_id = str(uuid.uuid4())
+    try:
+        payload = request.get_json(force=True, silent=True)
+        if not payload:
+            return {"error": "JSON payload required"}, 400
 
-    prompt = payload.get("prompt")
-    if not prompt:
-        return {"error": "Field 'prompt' is required."}, 400
+        prompt = payload.get("prompt")
+        if not prompt:
+            return {"error": "Field 'prompt' is required."}, 400
 
-    thread_id = payload.get("thread_id") or str(uuid.uuid4())
-    session_id = payload.get("session_id")
-    resume_thread_id = payload.get("resume_thread_id")
+        thread_id = payload.get("thread_id") or thread_id
+        session_id = payload.get("session_id")
+        resume_thread_id = payload.get("resume_thread_id")
 
-    request_payload = {
-        "thread_id": thread_id,
-        "session_id": session_id,
-        "prompt": prompt,
-        "resume_thread_id": resume_thread_id,
-    }
+        request_payload = {
+            "thread_id": thread_id,
+            "session_id": session_id,
+            "prompt": prompt,
+            "resume_thread_id": resume_thread_id,
+        }
 
-    previous_state = None
-    if resume_thread_id:
-        previous_state = checkpoint_store.get_latest_checkpoint(resume_thread_id)
-        if previous_state:
-            previous_state = previous_state["checkpoint_data"]
+        previous_state = None
+        if resume_thread_id:
+            previous_state = checkpoint_store.get_latest_checkpoint(resume_thread_id)
+            if previous_state:
+                previous_state = previous_state["checkpoint_data"]
 
-    ingest_state = ingest_agent.process(
-        prompt=prompt,
-        thread_id=thread_id,
-        session_id=session_id,
-        previous_state=previous_state,
-        metadata={"resume_thread_id": resume_thread_id} if resume_thread_id else None,
-    )
+        ingest_state = ingest_agent.process(
+            prompt=prompt,
+            thread_id=thread_id,
+            session_id=session_id,
+            previous_state=previous_state,
+            metadata={"resume_thread_id": resume_thread_id} if resume_thread_id else None,
+        )
 
-    log_agent_event(thread_id, "request", request_payload)
-    log_agent_event(thread_id, "ingest", ingest_state)
+        log_agent_event(thread_id, "request", request_payload)
+        log_agent_event(thread_id, "ingest", ingest_state)
 
-    start_time = time.time()
-    response = runtime.run(
-        thread_id=thread_id,
-        prompt=prompt,
-        session_id=session_id,
-        ingest_state=ingest_state,
-    )
-    duration_ms = (time.time() - start_time) * 1000.0
-    log_metric("api_response_latency_ms", duration_ms, {"session_id": session_id or "anonymous"})
-    log_agent_event(thread_id, "response", response)
+        start_time = time.time()
+        response = runtime.run(
+            thread_id=thread_id,
+            prompt=prompt,
+            session_id=session_id,
+            ingest_state=ingest_state,
+        )
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_metric("api_response_latency_ms", duration_ms, {"session_id": session_id or "anonymous"})
+        log_agent_event(thread_id, "response", response)
 
-    return {
-        "thread_id": thread_id,
-        "session_id": session_id,
-        "ingest_state": ingest_state,
-        "reasoning_state": response.get("reasoning_state"),
-        "planning_state": response.get("planning_state"),
-        "execution_state": response.get("execution_state"),
-        "reflection_state": response.get("reflection_state"),
-        "learning_state": response.get("learning_state"),
-        "result": response["result"],
-        "trace": response["trace"],
-    }, 200
+        return {
+            "thread_id": thread_id,
+            "session_id": session_id,
+            "ingest_state": ingest_state,
+            "reasoning_state": response.get("reasoning_state"),
+            "planning_state": response.get("planning_state"),
+            "execution_state": response.get("execution_state"),
+            "reflection_state": response.get("reflection_state"),
+            "learning_state": response.get("learning_state"),
+            "result": response["result"],
+            "trace": response["trace"],
+        }, 200
+    except Exception as exc:
+        app.logger.exception("Agent chat request failed")
+        try:
+            log_agent_event(thread_id, "error", {"error": str(exc)})
+        except Exception:
+            app.logger.exception("Failed to write agent error audit log")
+        return {"thread_id": thread_id, "error": str(exc)}, 500
 
 
 @app.route("/v1/agent/trace/<thread_id>", methods=["GET"])
@@ -134,4 +157,5 @@ def replay(thread_id: str) -> tuple[dict[str, Any], int]:
 
 if __name__ == "__main__":
     port = int(os.getenv("API_PORT", 8000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=debug)

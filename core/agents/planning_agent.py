@@ -43,11 +43,7 @@ class PlanningAgent:
             state = llm_result.model_dump(mode="json")
         except Exception as e:
             logger.error(f"PlanningAgent LLM error: {e}. Falling back to default plan.")
-            state = {
-                "tasks": [{"task_id": "task_1", "description": "Fallback task", "depends_on": [], "status": "pending"}],
-                "task_count": 1,
-                "summary": "Fallback plan due to error",
-            }
+            state = self._fallback_plan(reasoning_state)
             
         # Ensure mandatory server-side fields
         state["plan_id"] = str(uuid.uuid4())
@@ -73,3 +69,72 @@ class PlanningAgent:
             previous_checkpoint_id=reasoning_state.get("reasoning_id"),
         )
         return validated_state
+
+    def _fallback_plan(self, reasoning_state: Dict[str, Any]) -> Dict[str, Any]:
+        prompt = str(reasoning_state.get("normalized_prompt") or "").lower()
+        nested_markers = [
+            "sau đó",
+            "rồi",
+            "then",
+            "after",
+            "dựa trên",
+            "based on",
+            "tiếp theo",
+        ]
+        is_nested = reasoning_state.get("complexity") in {"nested", "complex"} or any(
+            marker in prompt for marker in nested_markers
+        )
+        if not is_nested:
+            return {
+                "tasks": [
+                    {
+                        "task_id": "task_1",
+                        "description": "Answer the user's CRM data request",
+                        "depends_on": [],
+                        "task_type": "query",
+                        "input_refs": [],
+                        "output_key": "primary_rows",
+                        "success_criteria": ["Query returns a valid result set"],
+                        "status": "pending",
+                    }
+                ],
+                "task_count": 1,
+                "summary": "Fallback single-step plan due to planning error",
+            }
+
+        return {
+            "tasks": [
+                {
+                    "task_id": "task_A",
+                    "description": "Run the first CRM query needed to identify the base records",
+                    "depends_on": [],
+                    "task_type": "query",
+                    "input_refs": [],
+                    "output_key": "base_records",
+                    "success_criteria": ["Base records are available for downstream tasks"],
+                    "status": "pending",
+                },
+                {
+                    "task_id": "task_B",
+                    "description": "Use task_A results to query related CRM records",
+                    "depends_on": ["task_A"],
+                    "task_type": "query",
+                    "input_refs": ["task_A.rows"],
+                    "output_key": "related_records",
+                    "success_criteria": ["Related records are queried using upstream identifiers"],
+                    "status": "pending",
+                },
+                {
+                    "task_id": "task_C",
+                    "description": "Synthesize the upstream query results into the final business answer",
+                    "depends_on": ["task_A", "task_B"],
+                    "task_type": "synthesis",
+                    "input_refs": ["task_A.rows", "task_B.rows"],
+                    "output_key": "final_answer",
+                    "success_criteria": ["Final answer uses all required upstream results"],
+                    "status": "pending",
+                },
+            ],
+            "task_count": 3,
+            "summary": "Fallback dependency-aware plan due to planning error",
+        }

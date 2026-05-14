@@ -41,7 +41,7 @@ st.header("2. Execution Analytics")
 
 try:
     # Query system metrics
-    metrics = query("SELECT metric_name, metric_value, tags, created_at FROM audit_zone.system_metrics ORDER BY created_at DESC LIMIT 100")
+    metrics = query("SELECT metric_name, metric_value, metric_labels, created_at FROM audit_zone.api_metrics ORDER BY created_at DESC LIMIT 100")
     if metrics:
         df_metrics = pd.DataFrame(metrics)
         st.subheader("Recent Metrics")

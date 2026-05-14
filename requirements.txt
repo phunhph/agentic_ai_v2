@@ -1,28 +1,37 @@
-langgraph
+# ==========================================
+# 1. AI, LLM & Agentic Frameworks
+# ==========================================
 langchain
+langgraph
 litellm
+openai
+google-generativeai
+sentence-transformers
+tiktoken
 
+# ==========================================
+# 2. Database, Vector Store & ORM
+# ==========================================
 psycopg2-binary
 pgvector
 sqlalchemy
 alembic
+sqlglot
 
+# ==========================================
+# 3. Web API Frameworks & UI
+# ==========================================
+fastapi
+uvicorn
 flask
 streamlit
-requests
 
-pydantic
-python-dotenv
-
-openai
-google-generativeai
-
-tiktoken
+# ==========================================
+# 4. Data Processing & Utilities
+# ==========================================
 numpy
 pandas
-
-uvicorn
-fastapi
-sentence-transformers
+pydantic
+python-dotenv
+requests
 langdetect
-sqlglot

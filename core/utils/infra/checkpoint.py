@@ -15,14 +15,25 @@ class CheckpointStore:
     ) -> None:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO audit_zone.checkpoints
-                        (thread_id, session_id, checkpoint_data, previous_checkpoint_id, state_type)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (thread_id, session_id, json_dumps(state_data), previous_checkpoint_id, state_type),
-                )
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO audit_zone.checkpoints
+                            (thread_id, session_id, tenant_id, checkpoint_data, previous_checkpoint_id, state_type)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """,
+                        (thread_id, session_id, session_id, json_dumps(state_data), previous_checkpoint_id, state_type),
+                    )
+                except Exception:
+                    conn.rollback()
+                    cursor.execute(
+                        """
+                        INSERT INTO audit_zone.checkpoints
+                            (thread_id, session_id, checkpoint_data, previous_checkpoint_id, state_type)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (thread_id, session_id, json_dumps(state_data), previous_checkpoint_id, state_type),
+                    )
             conn.commit()
 
     def create_checkpoint(

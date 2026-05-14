@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import time
 from typing import Any
 from uuid import uuid4
@@ -12,11 +13,14 @@ from core.tools.mcp_tool import MCPTool
 from core.tools.semantic_schema import SemanticSchemaRetriever
 from core.utils.infra.checkpoint import CheckpointStore
 from core.utils.infra.metrics import log_metric
+from core.utils.llm import LLMClient, get_chat_model
 from core.utils.logic.context_optimizer import ContextOptimizer
 from core.utils.logic.cost_router import CostRouter
 from core.utils.logic.rls_manager import RLSManager
 from core.utils.logic.retry_policy import RetryPolicy
 from core.utils.logic.tenant_guard import TenantGuard
+
+logger = logging.getLogger(__name__)
 
 
 class LangGraphRuntime:
@@ -254,20 +258,38 @@ class LangGraphRuntime:
         4. Keep it concise, helpful, and professional.
         """
         
-        from litellm import completion
-        from core.utils.llm import get_chat_model
-        import logging
-        logger = logging.getLogger(__name__)
-        
+        client = LLMClient()
+
         try:
-            response = completion(
+            logger.debug("Generating final result via LLM using provider-aware LLMClient")
+            response = client.completion(
                 model=get_chat_model(),
                 messages=[{"role": "system", "content": system_prompt}],
-                temperature=0.3
+                temperature=0.3,
             )
+            logger.debug("LLM response for final result obtained")
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Failed to generate final response via LLM: {e}")
+            # When the final LLM summarization fails, still return a usable fallback
+            if execution_state.get("status") == "success":
+                rows_summary = []
+                for task in execution_state.get("tasks", []):
+                    result = task.get("result")
+                    if isinstance(result, dict) and isinstance(result.get("rows"), list):
+                        rows_summary.append(
+                            f"{task.get('description')}: {len(result['rows'])} bản ghi"
+                        )
+                summary_text = "; ".join(rows_summary)
+                if summary_text:
+                    return (
+                        "Yêu cầu đã được thực thi thành công, nhưng quá trình tạo câu trả lời bằng LLM gặp lỗi. "
+                        f"Kết quả: {summary_text}."
+                    )
+                return (
+                    "Yêu cầu đã được thực thi thành công, nhưng quá trình tạo câu trả lời bằng LLM gặp lỗi. "
+                    "Vui lòng kiểm tra trạng thái execution để xem chi tiết dữ liệu."
+                )
             return f"Execution completed with status: {execution_state.get('status')}. (Fallback response generated due to LLM error)"
 
 

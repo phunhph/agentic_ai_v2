@@ -1,9 +1,12 @@
 from __future__ import annotations
 import os
 import re
+import logging
 from typing import Any
 
 from .model_config import ALLOWED_TOOL_NAMES
+
+logger = logging.getLogger(__name__)
 
 SECRET_KEYS = [
     "OPENAI_API_KEY",
@@ -20,10 +23,14 @@ SQL_DENY_PATTERNS = [
     r"\bTRUNCATE\b",
     r"\bDELETE\b",
     r"\bCOPY\b",
-    r"\b\;\b",
+    r"\bINSERT\b",
+    r"\bUPDATE\b",
+    r"\bMERGE\b",
+    r"\bGRANT\b",
+    r"\bREVOKE\b",
 ]
 
-ALLOWED_SQL_COMMANDS = ["SELECT", "INSERT", "UPDATE"]
+ALLOWED_SQL_COMMANDS = ["SELECT"]
 
 
 def is_tool_allowed(tool_name: str) -> bool:
@@ -32,12 +39,19 @@ def is_tool_allowed(tool_name: str) -> bool:
 
 def is_sql_safe(sql: str) -> bool:
     sql_upper = sql.upper().strip()
+    if ";" in sql_upper.rstrip(";"):
+        logger.error(f"[SECURITY] SQL Denied - Multiple statements are not allowed | SQL: {sql}")
+        return False
     # Deny patterns (DROP, ALTER, DELETE, etc.)
     for pattern in SQL_DENY_PATTERNS:
         if re.search(pattern, sql_upper):
+            logger.error(f"[SECURITY] SQL Denied - Pattern matched: {pattern} | SQL: {sql}")
             return False
     # Allow only SELECT, INSERT, UPDATE
-    return any(sql_upper.startswith(cmd) for cmd in ALLOWED_SQL_COMMANDS)
+    allowed = any(sql_upper.startswith(cmd) for cmd in ALLOWED_SQL_COMMANDS)
+    if not allowed:
+        logger.error(f"[SECURITY] SQL Denied - Command not allowed | SQL: {sql}")
+    return allowed
 
 
 def redact_secrets(payload: dict[str, Any]) -> dict[str, Any]:

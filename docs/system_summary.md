@@ -8,6 +8,7 @@ Hệ thống **Agentic CRM Intelligence System** là một nền tảng AI đa t
 - **Traceable UI**: Theo dõi chain-of-thought của Agent theo thời gian thực.
 - **Context Awareness**: Hiểu ngữ cảnh hội thoại nhiều lượt.
 - **Secure Execution**: Thực thi SQL an toàn thông qua lớp bảo mật RBAC và Tool Layer.
+- **Dynamic Query Engine**: Dùng schema catalog, join graph và QueryPlan compiler để giảm context gửi vào LLM, thay vì để LLM tự viết toàn bộ SQL.
 - **Self-Learning**: Ghi nhớ pattern thành công để tối ưu hóa chi phí và tốc độ.
 
 ### Công nghệ Sử dụng
@@ -50,6 +51,7 @@ Hệ thống **Agentic CRM Intelligence System** là một nền tảng AI đa t
 
 ### Phase 6: Execution, Reflection & Continuous Learning
 - ExecutionAgent: thực thi SQL từ plan.
+- Dynamic query path: task được chuyển thành `QueryPlan`, validate bảng/cột bằng `SchemaCatalog`, rồi compile SQL trước khi gọi MCP.
 - ReflectorAgent: đánh giá kết quả, quyết định retry.
 - LearningAgent: lưu pattern vào `knowledge_zone.agent_embeddings`.
 
@@ -86,6 +88,12 @@ agentic_v2/
 │   │   └── learning_agent.py
 │   ├── graph/               # LangGraph runtime
 │   │   └── langgraph_runtime.py
+│   ├── query/               # Dynamic query engine
+│   │   ├── catalog.py       # DB metadata catalog + fallback cards
+│   │   ├── join_graph.py    # FK/join path discovery
+│   │   ├── query_plan.py    # Structured QueryPlan contracts
+│   │   ├── compiler.py      # Validated SQL renderer
+│   │   └── planner.py       # Intent-to-QueryPlan bridge
 │   ├── tools/               # Tools và utilities
 │   │   ├── llm_router.py    # Model routing
 │   │   ├── mcp_tool.py      # SQL execution tool
@@ -151,6 +159,9 @@ graph TB
     Ingest --> Reasoning[ReasoningAgent]
     Reasoning --> Planning[PlanningAgent]
     Planning --> Execution[ExecutionAgent]
+    Catalog[SchemaCatalog] --> Execution
+    JoinGraph[JoinGraph] --> Execution
+    Compiler[QueryCompiler] --> Execution
     Execution --> Reflector[ReflectorAgent]
     Reflector --> Learning[LearningAgent]
     Learning --> Embeddings[(Embeddings)]
@@ -186,6 +197,7 @@ graph TB
 
 - **User Flow**: User → UI → API → Agents Pipeline → DB
 - **Agent Pipeline**: Ingest → Reasoning → Planning → Execution → Reflection → Learning
+- **Dynamic Query Path**: ExecutionAgent → SchemaCatalog/JoinGraph → QueryPlan → QueryCompiler → MCP Tool
 - **Tools**: MCP Tool cho SQL execution an toàn
 - **Optimizations (Phase 7)**: Context pruning, cost routing, tenant isolation
 - **Persistence**: Checkpoints, Audit Logs, Metrics, Embeddings

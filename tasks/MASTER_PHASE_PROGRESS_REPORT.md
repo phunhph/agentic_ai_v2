@@ -1,6 +1,6 @@
 # Báo cáo hoàn thiện TODO roadmap
 
-*Cập nhật: 2026-05-13*
+*Cập nhật: 2026-05-14*
 
 Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt cập nhật hiện tại, dựa trên `tasks/MASTER_PHASE_ROADMAP_TODO.md`, đồng thời chỉ ra phần còn lại theo mức ưu tiên.
 
@@ -22,6 +22,12 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
 - Triển khai **self-healing loop** (retry có giới hạn trước khi kết thúc thất bại).
 - Bổ sung **DLQ/failure bucket** khi vượt retry limit.
 - Chuẩn hóa taxonomy lỗi thực thi (`timeout`, `rate limit`, `transient`, `logic`, `unknown`).
+- Bổ sung **Dynamic Query Engine**:
+  - `SchemaCatalog` đọc metadata DB và fallback sang semantic views.
+  - `JoinGraph` tìm đường join qua FK/semantic edge.
+  - `QueryPlan` chuẩn hóa truy vấn trước khi render SQL.
+  - `QueryCompiler` validate bảng/cột/operator và render SQL an toàn.
+- `ExecutionAgent` hiện ưu tiên dynamic compiled SQL, sau đó mới fallback sang rule/LLM raw SQL.
 - Thêm test retry policy:
   - `tests/test_phase6_retry_policy.py`
 
@@ -41,6 +47,9 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
   - thêm retry loop có backoff;
   - phân loại lỗi phục vụ retry decision;
   - ghi DLQ record khi thất bại sau retry.
+- `core/query/`: thêm query engine mở rộng gồm catalog, join graph, query plan, compiler và planner.
+- `core/tools/semantic_schema.py`: bổ sung relation cards gọn để giảm context schema gửi vào LLM.
+- `core/agents/execution_agent.py`: tích hợp dynamic query compiler trước nhánh fallback.
 - `apps/web/streamlit_app.py`: hiển thị realtime workflow states sau mỗi prompt.
 
 ---
@@ -52,6 +61,7 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
 - Phase 8: E2E + regression + multi-tenant validation.
 - Phase 8: Security checklist, RBAC governance, monitoring/alerting, UAT/sign-off.
 - Phase 7: Validation test cases cho multi-tenant/RLS và dashboard observability.
+- Dynamic query engine: bổ sung dry-run SQL (`EXPLAIN`/`LIMIT 0`) và repair loop theo lỗi có cấu trúc.
 
 ### Ưu tiên trung bình
 
@@ -69,6 +79,7 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
 
 ## 4) Đề xuất nhịp triển khai tiếp theo
 
-1. Chốt checklist Phase 7 (RLS tests + observability cockpit + SLO alert).
-2. Mở gói hardening Phase 8 (security checklist + RBAC + production checklist).
-3. Bổ sung pipeline CI chính thức để tự động hóa nghiệm thu roadmap.
+1. Hoàn thiện dry-run validator và repair loop cho `QueryPlan`.
+2. Chốt checklist Phase 7 (RLS tests + observability cockpit + SLO alert).
+3. Mở gói hardening Phase 8 (security checklist + RBAC + production checklist).
+4. Bổ sung pipeline CI chính thức để tự động hóa nghiệm thu roadmap.

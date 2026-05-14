@@ -56,8 +56,14 @@ def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     return {key: _normalize_value(value) for key, value in row.items()}
 
 
-def query(sql: str, params: tuple[Any, ...] | None = None) -> list[dict[str, Any]]:
+def query(
+    sql: str,
+    params: tuple[Any, ...] | None = None,
+    tenant_id: str | None = None,
+) -> list[dict[str, Any]]:
     with get_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if tenant_id:
+                cur.execute("SET LOCAL app.tenant_id = %s", (tenant_id,))
             cur.execute(sql, params)
             return [_normalize_row(dict(row)) for row in cur.fetchall()]

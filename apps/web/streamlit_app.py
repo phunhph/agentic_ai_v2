@@ -101,13 +101,6 @@ def main() -> None:
                 except requests.RequestException as exc:
                     st.error(f"API request failed: {exc}")
 
-        st.subheader("Conversation history")
-        for item in reversed(load_history()):
-            with st.expander(f"Prompt: {item['prompt']}", expanded=False):
-                st.markdown(f"**Response:**\n{item['response']}")
-                st.caption(f"thread_id: {item['thread_id']}")
-
-    with col2:
         st.subheader("Realtime state viewer")
         payload = st.session_state.latest_agent_payload
         if payload:
@@ -139,6 +132,13 @@ def main() -> None:
                 st.write("No trace payload available.")
         else:
             st.info("Submit a prompt to see realtime workflow state.")
+
+    with col2:
+        st.subheader("Conversation history")
+        for item in reversed(load_history()):
+            with st.expander(f"Prompt: {item['prompt']}", expanded=False):
+                st.markdown(f"**Response:**\n{item['response']}")
+                st.caption(f"thread_id: {item['thread_id']}")
 
         st.markdown("---")
         st.subheader("Trace viewer")

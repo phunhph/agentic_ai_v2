@@ -30,6 +30,10 @@ class PlanningTaskModel(BaseModel):
     task_id: str
     description: str
     depends_on: list[str] = Field(default_factory=list)
+    task_type: Literal["query", "synthesis"] = "query"
+    input_refs: list[str] = Field(default_factory=list)
+    output_key: str | None = None
+    success_criteria: list[str] = Field(default_factory=list)
     status: Literal["pending", "ready", "completed", "failed", "blocked"] = "pending"
 
 
