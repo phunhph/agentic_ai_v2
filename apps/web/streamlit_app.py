@@ -15,7 +15,7 @@ def call_agent(prompt: str, thread_id: str | None = None) -> dict[str, object]:
     response = requests.post(
         f"{API_URL}/v1/agent/chat",
         json={"prompt": prompt, "thread_id": thread_id},
-        timeout=30,
+        timeout=120,
     )
     response.raise_for_status()
     return response.json()

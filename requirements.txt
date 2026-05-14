@@ -25,3 +25,4 @@ uvicorn
 fastapi
 sentence-transformers
 langdetect
+sqlglot

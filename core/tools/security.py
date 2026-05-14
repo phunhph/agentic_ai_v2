@@ -19,11 +19,11 @@ SQL_DENY_PATTERNS = [
     r"\bALTER\b",
     r"\bTRUNCATE\b",
     r"\bDELETE\b",
-    r"\bINSERT\b",
-    r"\bUPDATE\b",
     r"\bCOPY\b",
     r"\b\;\b",
 ]
+
+ALLOWED_SQL_COMMANDS = ["SELECT", "INSERT", "UPDATE"]
 
 
 def is_tool_allowed(tool_name: str) -> bool:
@@ -31,11 +31,13 @@ def is_tool_allowed(tool_name: str) -> bool:
 
 
 def is_sql_safe(sql: str) -> bool:
-    sql_upper = sql.upper()
+    sql_upper = sql.upper().strip()
+    # Deny patterns (DROP, ALTER, DELETE, etc.)
     for pattern in SQL_DENY_PATTERNS:
         if re.search(pattern, sql_upper):
             return False
-    return sql_upper.strip().startswith("SELECT")
+    # Allow only SELECT, INSERT, UPDATE
+    return any(sql_upper.startswith(cmd) for cmd in ALLOWED_SQL_COMMANDS)
 
 
 def redact_secrets(payload: dict[str, Any]) -> dict[str, Any]:
