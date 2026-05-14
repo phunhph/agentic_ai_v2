@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, List
 
 from core.tools.mcp_tool import MCPTool
-from core.query import DynamicQueryPlanner, QueryCompiler, SchemaCatalog
+from core.query import DryRunValidator, DynamicQueryPlanner, QueryCompiler, SchemaCatalog
 from core.utils.infra.audit import log_agent_event
 from core.utils.infra.checkpoint import CheckpointStore
 from pydantic import BaseModel
@@ -22,6 +22,7 @@ class ExecutionAgent:
         self.catalog = SchemaCatalog()
         self.dynamic_planner = DynamicQueryPlanner(self.catalog)
         self.query_compiler = QueryCompiler(self.catalog)
+        self.dry_run_validator = DryRunValidator()
 
     def execute(
         self,
@@ -71,7 +72,7 @@ class ExecutionAgent:
                 task_results.append(task_result)
                 continue
 
-            task_sql = self._build_task_sql(task, schema_context, prompt, execution_context)
+            task_sql = self._build_task_sql(task, schema_context, prompt, execution_context, session_id)
             logger.info(f"[EXECUTION] Built SQL for task '{task.get('description')}': {task_sql}")
             
             preview = self.mcp_tool.preview(task_sql)
@@ -135,6 +136,7 @@ class ExecutionAgent:
         schema_context: dict[str, Any],
         prompt: str,
         execution_context: Dict[str, Any] | None = None,
+        session_id: str | None = None,
     ) -> str:
         views = schema_context.get("views", [])
         details = schema_context.get("details", [])
@@ -145,7 +147,7 @@ class ExecutionAgent:
         logger.info(f"[SQL_BUILDER] Available views: {views}")
         logger.info(f"[SQL_BUILDER] Schema details: {details}")
 
-        dynamic_sql = self._build_dynamic_sql(prompt, description)
+        dynamic_sql = self._build_dynamic_sql(prompt, description, session_id)
         if dynamic_sql:
             logger.info(f"[SQL_BUILDER] Using dynamic compiled SQL: {dynamic_sql}")
             return dynamic_sql
@@ -320,12 +322,38 @@ class ExecutionAgent:
                 return value.strip(" .,'\"") or None
         return None
 
-    def _build_dynamic_sql(self, prompt: str, description: str) -> str | None:
+    def _build_dynamic_sql(
+        self,
+        prompt: str,
+        description: str,
+        session_id: str | None = None,
+    ) -> str | None:
         try:
             query_plan = self.dynamic_planner.build_plan(prompt, description)
             if query_plan is None:
                 return None
-            return self.query_compiler.compile(query_plan)
+            sql = self.query_compiler.compile(query_plan)
+            validation = self.dry_run_validator.validate(sql, tenant_id=session_id)
+            if not validation.ok:
+                repaired_plan = self.dynamic_planner.repair_plan(query_plan, validation.message)
+                if repaired_plan is not None:
+                    repaired_sql = self.query_compiler.compile(repaired_plan)
+                    repaired_validation = self.dry_run_validator.validate(repaired_sql, tenant_id=session_id)
+                    if repaired_validation.ok:
+                        logger.info("[SQL_BUILDER] Dynamic SQL repaired after dry-run failure")
+                        return repaired_sql
+                logger.warning(
+                    "[SQL_BUILDER] Dynamic SQL dry-run failed at %s: %s",
+                    validation.stage,
+                    validation.message,
+                )
+                return None
+            if validation.skipped:
+                logger.warning(
+                    "[SQL_BUILDER] Dynamic SQL dry-run skipped: %s",
+                    validation.message,
+                )
+            return sql
         except Exception as exc:
             logger.warning("[SQL_BUILDER] Dynamic compiler skipped: %s", exc)
             return None

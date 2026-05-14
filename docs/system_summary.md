@@ -42,7 +42,7 @@ Hệ thống **Agentic CRM Intelligence System** là một nền tảng AI đa t
 ### Phase 4: Ingest Layer & Context Nexus
 - IngestAgent: normalize prompt, extract intent/entity, chống injection.
 - Checkpoint persistence vào `audit_zone.checkpoints`.
-- Thread isolation và resume/replay.
+- Thread isolation, resume/replay và thread context linking từ các checkpoint gần nhất.
 
 ### Phase 5: Reasoning & Planning Layers
 - ReasoningAgent: phân rã vấn đề, output JSON structured.
@@ -93,6 +93,7 @@ agentic_v2/
 │   │   ├── join_graph.py    # FK/join path discovery
 │   │   ├── query_plan.py    # Structured QueryPlan contracts
 │   │   ├── compiler.py      # Validated SQL renderer
+│   │   ├── validator.py     # SQL parse + EXPLAIN dry-run
 │   │   └── planner.py       # Intent-to-QueryPlan bridge
 │   ├── tools/               # Tools và utilities
 │   │   ├── llm_router.py    # Model routing
@@ -197,7 +198,8 @@ graph TB
 
 - **User Flow**: User → UI → API → Agents Pipeline → DB
 - **Agent Pipeline**: Ingest → Reasoning → Planning → Execution → Reflection → Learning
-- **Dynamic Query Path**: ExecutionAgent → SchemaCatalog/JoinGraph → QueryPlan → QueryCompiler → MCP Tool
+- **Dynamic Query Path**: ExecutionAgent → SchemaCatalog/JoinGraph → QueryPlan → QueryCompiler → DryRunValidator → MCP Tool
+- **Context Memory Path**: CheckpointStore → build_thread_context → ContextOptimizer → Reasoning/Execution prompt scope
 - **Tools**: MCP Tool cho SQL execution an toàn
 - **Optimizations (Phase 7)**: Context pruning, cost routing, tenant isolation
 - **Persistence**: Checkpoints, Audit Logs, Metrics, Embeddings

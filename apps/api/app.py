@@ -82,7 +82,7 @@ def chat() -> tuple[dict[str, Any], int]:
 
         previous_state = None
         if resume_thread_id:
-            previous_state = checkpoint_store.get_latest_checkpoint(resume_thread_id)
+            previous_state = checkpoint_store.get_latest_checkpoint(resume_thread_id, state_type="checkpoint")
             if previous_state:
                 previous_state = previous_state["checkpoint_data"]
 

@@ -51,6 +51,12 @@ class LangGraphRuntime:
         if ingest_state is not None:
             prompt = ingest_state.get("normalized_prompt", prompt)
 
+        thread_context = self.store.build_thread_context(thread_id)
+        if ingest_state is not None:
+            metadata = dict(ingest_state.get("metadata", {}))
+            metadata["thread_context"] = thread_context
+            ingest_state["metadata"] = metadata
+
         schema_context = self.schema_retriever.retrieve_relevant(prompt)
         optimized_context = self.context_optimizer.optimize(
             ingest_state=ingest_state,
@@ -206,6 +212,7 @@ class LangGraphRuntime:
         return {
             "thread_id": thread_id,
             "session_id": session_id,
+            "thread_context": thread_context,
             "result": result_text,
             "trace": trace,
             "reasoning_state": reasoning_state,

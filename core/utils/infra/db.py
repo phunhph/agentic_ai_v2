@@ -67,3 +67,15 @@ def query(
                 cur.execute("SET LOCAL app.tenant_id = %s", (tenant_id,))
             cur.execute(sql, params)
             return [_normalize_row(dict(row)) for row in cur.fetchall()]
+
+
+def execute_statement(
+    sql: str,
+    params: tuple[Any, ...] | None = None,
+    tenant_id: str | None = None,
+) -> None:
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            if tenant_id:
+                cur.execute("SET LOCAL app.tenant_id = %s", (tenant_id,))
+            cur.execute(sql, params)

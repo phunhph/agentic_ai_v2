@@ -27,6 +27,8 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
   - `JoinGraph` tìm đường join qua FK/semantic edge.
   - `QueryPlan` chuẩn hóa truy vấn trước khi render SQL.
   - `QueryCompiler` validate bảng/cột/operator và render SQL an toàn.
+  - `DryRunValidator` parse SQL và chạy `EXPLAIN` trước khi execute thật.
+  - Repair hook cho lỗi thiếu cột, thử alias/cột tương đương từ catalog.
 - `ExecutionAgent` hiện ưu tiên dynamic compiled SQL, sau đó mới fallback sang rule/LLM raw SQL.
 - Thêm test retry policy:
   - `tests/test_phase6_retry_policy.py`
@@ -48,8 +50,12 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
   - phân loại lỗi phục vụ retry decision;
   - ghi DLQ record khi thất bại sau retry.
 - `core/query/`: thêm query engine mở rộng gồm catalog, join graph, query plan, compiler và planner.
+- `core/query/validator.py`: thêm dry-run validation trước MCP execution.
 - `core/tools/semantic_schema.py`: bổ sung relation cards gọn để giảm context schema gửi vào LLM.
 - `core/agents/execution_agent.py`: tích hợp dynamic query compiler trước nhánh fallback.
+- `core/utils/infra/checkpoint.py`: bổ sung `build_thread_context()` để liên kết checkpoint theo thread và tạo summary ngữ cảnh ngắn.
+- `core/graph/langgraph_runtime.py`: tự nạp thread context vào metadata trước khi optimize context.
+- `apps/api/app.py`: resume thread lấy đúng `state_type="checkpoint"` thay vì latest state bất kỳ.
 - `apps/web/streamlit_app.py`: hiển thị realtime workflow states sau mỗi prompt.
 
 ---
@@ -61,7 +67,8 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
 - Phase 8: E2E + regression + multi-tenant validation.
 - Phase 8: Security checklist, RBAC governance, monitoring/alerting, UAT/sign-off.
 - Phase 7: Validation test cases cho multi-tenant/RLS và dashboard observability.
-- Dynamic query engine: bổ sung dry-run SQL (`EXPLAIN`/`LIMIT 0`) và repair loop theo lỗi có cấu trúc.
+- Dynamic query engine: mở rộng repair loop cho lỗi ambiguous column và table permission.
+- Context memory: bổ sung test/migration nếu cần chuẩn hóa parent checkpoint id giữa các state.
 
 ### Ưu tiên trung bình
 
@@ -79,7 +86,8 @@ Tài liệu này tổng hợp các hạng mục đã hoàn thành trong đợt c
 
 ## 4) Đề xuất nhịp triển khai tiếp theo
 
-1. Hoàn thiện dry-run validator và repair loop cho `QueryPlan`.
-2. Chốt checklist Phase 7 (RLS tests + observability cockpit + SLO alert).
-3. Mở gói hardening Phase 8 (security checklist + RBAC + production checklist).
-4. Bổ sung pipeline CI chính thức để tự động hóa nghiệm thu roadmap.
+1. Mở rộng repair loop cho lỗi ambiguous column và table permission.
+2. Chuẩn hóa parent checkpoint id giữa các state để trace graph có liên kết mạnh hơn.
+3. Chốt checklist Phase 7 (RLS tests + observability cockpit + SLO alert).
+4. Mở gói hardening Phase 8 (security checklist + RBAC + production checklist).
+5. Bổ sung pipeline CI chính thức để tự động hóa nghiệm thu roadmap.

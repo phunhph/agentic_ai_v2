@@ -38,6 +38,9 @@ class ContextOptimizer:
         if not ingest_state:
             return "No prior context."
         metadata = ingest_state.get("metadata", {})
+        thread_context = metadata.get("thread_context")
+        if isinstance(thread_context, dict) and thread_context.get("summary"):
+            return f"Recent thread context: {thread_context['summary']}"
         resume_thread_id = metadata.get("resume_thread_id")
         if resume_thread_id:
             return f"Resuming from thread {resume_thread_id}."
