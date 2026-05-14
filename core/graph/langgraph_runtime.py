@@ -85,6 +85,8 @@ class LangGraphRuntime:
             token_count=len(prompt.split()),
             model_key=selected_key,
         )
+        self.cost_router.record_cost(cost_estimate)
+        
         log_metric(
             "model_cost_estimate",
             cost_estimate,
@@ -118,6 +120,7 @@ class LangGraphRuntime:
         attempt = 1
 
         while reflection_state.get("status") == "fail":
+            self.cost_router.record_failure()
             error_label = self._classify_execution_error(execution_state, reflection_state)
             retry_exception = RuntimeError(error_label)
             if not self.retry_policy.should_retry(attempt, retry_exception):
@@ -147,6 +150,9 @@ class LangGraphRuntime:
                 session_id=session_id or "",
             )
             attempt += 1
+
+        if reflection_state.get("status") != "fail":
+            self.cost_router.record_success()
 
         dlq_record = None
         if reflection_state.get("status") == "fail":
@@ -220,62 +226,50 @@ class LangGraphRuntime:
         retry_attempts: list[dict[str, Any]],
         dlq_record: dict[str, Any] | None,
     ) -> str:
-        intent = reasoning_state.get("business_intent", "unknown")
-        complexity = reasoning_state.get("complexity", "unknown")
-        task_count = planning_state.get("task_count", 0)
-        execution_status = execution_state.get("status", "unknown")
-        reflection_status = reflection_state.get("status", "unknown")
-        execution_error = execution_state.get("error") or ""
-        reflection_issues = "; ".join(reflection_state.get("issues", []))
-        task_results = execution_state.get("tasks", [])
-        task_summary = ""
-        if task_results:
-            first_task = task_results[0]
-            if first_task.get("result"):
-                row_count = first_task.get("result", {}).get("count")
-                if row_count is not None:
-                    task_summary = f" First task rows: {row_count}."
+        detected_language = reasoning_state.get("detected_language", "en")
+        
+        # Build the context to send to the LLM
+        context = {
+            "business_intent": reasoning_state.get("business_intent"),
+            "execution_status": execution_state.get("status"),
+            "reflection_status": reflection_state.get("status"),
+            "execution_error": execution_state.get("error"),
+            "reflection_issues": reflection_state.get("issues"),
+            "tasks": execution_state.get("tasks", []),
+        }
+        
+        system_prompt = f"""
+        You are a helpful and professional AI Assistant for a CRM system.
+        Your job is to summarize the results of a database query and execution process for the user.
+        
+        Original User Request: "{prompt}"
+        
+        Execution Context:
+        {context}
+        
+        Instructions:
+        1. Write the final response in THIS LANGUAGE: {detected_language}
+        2. Summarize the results from the tasks. If the execution failed, politely explain what went wrong.
+        3. Do NOT show raw JSON or raw SQL unless explicitly asked.
+        4. Keep it concise, helpful, and professional.
+        """
+        
+        from litellm import completion
+        from core.utils.llm import get_chat_model
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            response = completion(
+                model=get_chat_model(),
+                messages=[{"role": "system", "content": system_prompt}],
+                temperature=0.3
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Failed to generate final response via LLM: {e}")
+            return f"Execution completed with status: {execution_state.get('status')}. (Fallback response generated due to LLM error)"
 
-        detail_lines = [
-            f"Phase 6 response via {model}.",
-            f"Business intent: {intent}.",
-            f"Complexity: {complexity}.",
-            f"Planned {task_count} task(s).",
-            f"Execution status: {execution_status}.",
-            f"Reflection status: {reflection_status}.",
-            f"Relevant semantic views: {', '.join(schema_context.get('views', []))}.",
-        ]
-
-        if execution_error:
-            detail_lines.append(f"Execution error: {execution_error}.")
-        if reflection_issues:
-            detail_lines.append(f"Reflection issues: {reflection_issues}.")
-        if task_summary:
-            detail_lines.append(task_summary)
-
-        completed_tasks = [task for task in execution_state.get("tasks", []) if task.get("status") == "completed"]
-        task_rows = [
-            f"{task.get('task_id')}: {task.get('result', {}).get('count', 'n/a')} rows"
-            for task in completed_tasks
-        ]
-        if task_rows:
-            detail_lines.append(f"Task results: {', '.join(task_rows)}.")
-
-        failed_tasks = [task for task in execution_state.get("tasks", []) if task.get("status") != "completed"]
-        if failed_tasks:
-            failed_descriptions = [
-                f"{task.get('task_id')} ({task.get('status')}): {task.get('error', 'unknown error')}"
-                for task in failed_tasks
-            ]
-            detail_lines.append(f"Failed or rejected tasks: {', '.join(failed_descriptions)}.")
-
-        if retry_attempts:
-            detail_lines.append(f"Retry attempts: {len(retry_attempts)}.")
-        if dlq_record:
-            detail_lines.append(f"DLQ record created: {dlq_record.get('dlq_id')}.")
-
-        detail_lines.append("Execution completed in Phase 6.")
-        return "\n".join(detail_lines)
 
     def _build_trace(
         self,

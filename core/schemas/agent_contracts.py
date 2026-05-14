@@ -21,6 +21,7 @@ class ReasoningStateModel(BaseModel):
     assumptions: list[str]
     reasoning_steps: list[ReasoningStep]
     normalized_prompt: str
+    detected_language: str | None = "en"
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
 
@@ -41,5 +42,6 @@ class PlanningStateModel(BaseModel):
     task_count: int
     tasks: list[PlanningTaskModel]
     summary: str
+    detected_language: str | None = "en"
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime

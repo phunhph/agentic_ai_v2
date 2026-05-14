@@ -1,9 +1,15 @@
 import re
 import uuid
 from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional
 
+from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
+
 from core.utils.infra.checkpoint import CheckpointStore
+
+logger = logging.getLogger(__name__)
 
 INTENT_KEYWORDS = {
     "sales": ["sales", "revenue", "deal", "quota"],
@@ -34,12 +40,19 @@ class IngestAgent:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         normalized_prompt = self._normalize_prompt(prompt)
+        
+        try:
+            detected_language = detect(normalized_prompt)
+        except LangDetectException:
+            detected_language = "en"
+            
         intent = self._classify_intent(normalized_prompt)
         entities = self._extract_entities(normalized_prompt)
         state = self._build_state(
             normalized_prompt=normalized_prompt,
             intent=intent,
             entities=entities,
+            detected_language=detected_language,
             thread_id=thread_id,
             session_id=session_id,
             previous_state=previous_state,
@@ -91,6 +104,7 @@ class IngestAgent:
         normalized_prompt: str,
         intent: str,
         entities: Dict[str, List[str]],
+        detected_language: str,
         thread_id: str,
         session_id: str,
         previous_state: Optional[Dict[str, Any]] = None,
@@ -101,6 +115,7 @@ class IngestAgent:
             "thread_id": thread_id,
             "session_id": session_id,
             "normalized_prompt": normalized_prompt,
+            "detected_language": detected_language,
             "intent": intent,
             "entities": entities,
             "metadata": metadata or {},

@@ -1,11 +1,17 @@
-from __future__ import annotations
 import uuid
+import logging
 from typing import Any, Dict, List
 
 from core.tools.mcp_tool import MCPTool
 from core.utils.infra.audit import log_agent_event
 from core.utils.infra.checkpoint import CheckpointStore
+from pydantic import BaseModel
+from core.utils.llm import generate_structured_output
 
+logger = logging.getLogger(__name__)
+
+class SQLOutput(BaseModel):
+    sql: str
 
 class ExecutionAgent:
     def __init__(self) -> None:
@@ -26,7 +32,7 @@ class ExecutionAgent:
         error = None
 
         for task in tasks:
-            task_sql = self._build_task_sql(task, schema_context)
+            task_sql = self._build_task_sql(task, schema_context, prompt)
             preview = self.mcp_tool.preview(task_sql)
             task_result = {
                 "task_id": task.get("task_id"),
@@ -76,15 +82,33 @@ class ExecutionAgent:
         )
         return execution_state
 
-    def _build_task_sql(self, task: Dict[str, Any], schema_context: dict[str, Any]) -> str:
+    def _build_task_sql(self, task: Dict[str, Any], schema_context: dict[str, Any], prompt: str) -> str:
         views = schema_context.get("views", [])
-        target = views[0] if views else "business_zone.v_hbl_accounts"
-        description = (task.get("description") or "").lower()
+        details = schema_context.get("details", [])
+        description = task.get("description") or ""
 
-        if "count" in description or "aggregate" in description:
-            return f"SELECT COUNT(*) AS count FROM {target}"
-        if "rank" in description or "sort" in description:
-            return f"SELECT * FROM {target} ORDER BY created_at DESC"
-        if "compare" in description or "temporal" in description:
-            return f"SELECT * FROM {target}"
-        return f"SELECT * FROM {target}"
+        system_prompt = f"""
+        You are a Postgres SQL Expert Agent.
+        Your task is to write a syntactically correct and safe PostgreSQL query to satisfy the current execution task.
+        
+        Original User Request: "{prompt}"
+        Current Task: "{description}"
+        
+        Available Schema Context:
+        Views: {views}
+        Details: {details}
+        
+        IMPORTANT: Return ONLY the raw SQL query. Do not wrap in markdown or add explanations.
+        """
+        
+        try:
+            llm_result = generate_structured_output(system_prompt, SQLOutput)
+            sql = llm_result.sql.replace('```sql', '').replace('```', '').strip()
+            return sql
+        except Exception as e:
+            logger.error(f"ExecutionAgent SQL generation error: {e}")
+            target = views[0] if views else "business_zone.v_hbl_accounts"
+            if "count" in description.lower() or "aggregate" in description.lower():
+                return f"SELECT COUNT(*) AS count FROM {target}"
+            return f"SELECT * FROM {target} LIMIT 10"
+

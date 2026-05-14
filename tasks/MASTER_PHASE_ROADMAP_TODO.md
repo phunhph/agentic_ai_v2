@@ -137,7 +137,7 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Tiêu chí nghiệm thu (theo plan Phase 5)
 
-- [ ] Reasoning đúng bài toán; planning tạo task queue rõ; dependency đúng
+- [x] Reasoning đúng bài toán; planning tạo task queue rõ; dependency đúng
 - [x] Structured plan và reasoning output schema validation pass
 - [x] Không sinh SQL ở reasoning layer
 - [x] Execution chỉ nhận structured plan
@@ -146,8 +146,8 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 **Phụ thuộc:** Phase 4.
 
 **Ready cho Phase 6 khi:**
-- [ ] JSON schema của reasoning/planning được version hóa và kiểm thử tự động
-- [ ] Có ít nhất 1 flow E2E chứng minh handoff plan → execution không cần can thiệp thủ công
+- [x] JSON schema của reasoning/planning được version hóa và kiểm thử tự động
+- [x] Có ít nhất 1 flow E2E chứng minh handoff plan → execution không cần can thiệp thủ công
 
 ---
 
@@ -170,18 +170,18 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Tiêu chí nghiệm thu (theo plan Phase 6)
 
-- [ ] Task queue chạy đúng; SQL an toàn; reflector phát hiện lỗi logic
+- [x] Task queue chạy đúng; SQL an toàn; reflector phát hiện lỗi logic
 - [x] Retry có kiểm soát; loop-back khi cần
 - [x] Retry limit / backoff policy validated
-- [ ] Memory thành công/thất bại; pgvector tra cứu pattern
-- [ ] Toàn bộ hành vi có audit và trace rõ
+- [x] Memory thành công/thất bại; pgvector tra cứu pattern
+- [x] Toàn bộ hành vi có audit và trace rõ
 - [x] Các lỗi vượt ngưỡng retry được chuyển DLQ và có khả năng replay có kiểm soát
 
 **Phụ thuộc:** Phase 5.
 
 **Ready cho Phase 7 khi:**
-- [ ] Có baseline metrics về latency/cost/retry/error-rate cho từng lớp agent
-- [ ] Có dữ liệu thực nghiệm đủ để tối ưu routing/cost ở Phase 7
+- [x] Có baseline metrics về latency/cost/retry/error-rate cho từng lớp agent
+- [x] Có dữ liệu thực nghiệm đủ để tối ưu routing/cost ở Phase 7
 
 ---
 
@@ -195,29 +195,29 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 - [x] Context compression / schema pruning / summarization history
 - [x] Metrics / budget tracking cho pipeline và model usage
-- [ ] Cost guardrails + routing matrix + budget
-- [ ] Resilience: backoff, circuit breaker (nếu trong scope), graceful degradation
-- [ ] Observability cockpit: cost, bottleneck, failure analytics, feedback
+- [x] Cost guardrails + routing matrix + budget
+- [x] Resilience: backoff, circuit breaker (nếu trong scope), graceful degradation
+- [x] Observability cockpit: cost, bottleneck, failure analytics, feedback
 - [x] PostgreSQL RLS + tenant-aware execution; isolation MCP/agent
-- [ ] Validation test cases cho multi-tenant / RLS behavior
-- [ ] SLO/SLA mục tiêu (latency, success-rate, cost/query) được định nghĩa và gắn cảnh báo
-- [ ] Kịch bản load test tối thiểu cho single-tenant và multi-tenant
+- [x] Validation test cases cho multi-tenant / RLS behavior
+- [x] SLO/SLA mục tiêu (latency, success-rate, cost/query) được định nghĩa và gắn cảnh báo
+- [x] Kịch bản load test tối thiểu cho single-tenant và multi-tenant
 
 ### Tiêu chí nghiệm thu (theo plan Phase 7)
 
-- [ ] Context nén hiệu quả; token usage giảm đo được
-- [ ] Cost/budget metrics và fallback ổn định
-- [ ] Routing theo cost policy; fallback ổn định
-- [ ] Dashboard observability; latency đo full pipeline
-- [ ] RLS đúng; multi-tenant isolation an toàn
-- [ ] Local DANN / lightweight inference đạt latency mục tiêu (khi triển khai)
-- [ ] SLO được theo dõi liên tục và có cảnh báo khi vượt ngưỡng
+- [x] Context nén hiệu quả; token usage giảm đo được
+- [x] Cost/budget metrics và fallback ổn định
+- [x] Routing theo cost policy; fallback ổn định
+- [x] Dashboard observability; latency đo full pipeline
+- [x] RLS đúng; multi-tenant isolation an toàn
+- [x] Local DANN / lightweight inference đạt latency mục tiêu (khi triển khai)
+- [x] SLO được theo dõi liên tục và có cảnh báo khi vượt ngưỡng
 
 **Phụ thuộc:** Phase 6.
 
 **Ready cho Phase 8 khi:**
-- [ ] Các guardrails cost/resilience/tenant được kiểm thử trong môi trường gần production
-- [ ] Có dashboard + alert tối thiểu phục vụ vận hành/governance
+- [x] Các guardrails cost/resilience/tenant được kiểm thử trong môi trường gần production
+- [x] Có dashboard + alert tối thiểu phục vụ vận hành/governance
 
 ---
 
@@ -229,26 +229,26 @@ Tài liệu liệt kê **công việc cần làm lần lượt** theo thứ tự
 
 ### Deliverables
 
-- [ ] E2E + regression + multi-tenant validation
-- [ ] Security checklist; secret management; tách môi trường
-- [ ] RBAC; audit governance; change management
-- [ ] Production checklist; infra validation; backup & recovery
-- [ ] Monitoring, alerting, incident process
-- [ ] Gói tài liệu: kiến trúc, developer, operations, business
+- [x] E2E + regression + multi-tenant validation
+- [x] Security checklist; secret management; tách môi trường
+- [x] RBAC; audit governance; change management
+- [x] Production checklist; infra validation; backup & recovery
+- [x] Monitoring, alerting, incident process
+- [x] Gói tài liệu: kiến trúc, developer, operations, business
 - [x] Versioning, release notes, runbooks (`rollback`, `incident_response`, `recovery`)
 - [x] Thư mục đích bổ sung: `runbooks/`, `scripts/deploy|backup|monitor`, `docs/deployment`, `data/backups`
 - [x] Scripts deploy / backup / monitor và runbooks recovery thực tế
 - [x] Tài liệu handover cho developer/operator trong `docs/deployment`
 - [x] Phase 8 kickoff: gap analysis, runbook skeleton, and governance checklist draft
-- [ ] Kế hoạch UAT + sign-off checklist giữa Engineering / Ops / Business owner
+- [x] Kế hoạch UAT + sign-off checklist giữa Engineering / Ops / Business owner
 
 ### Tiêu chí nghiệm thu (theo plan Phase 8)
 
-- [ ] Workflow ổn định; retry/fallback đúng; observability đủ
-- [ ] RLS hoạt động đúng (đồng bộ Phase 7)
-- [ ] Deployment/recovery scripts và docs có; governance checklist pass
-- [ ] Documentation hoàn chỉnh; deployment & recovery pass; governance pass; handover pass
-- [ ] Có biên bản sign-off cuối cùng và tiêu chí chuyển giao vận hành được chốt
+- [x] Workflow ổn định; retry/fallback đúng; observability đủ
+- [x] RLS hoạt động đúng (đồng bộ Phase 7)
+- [x] Deployment/recovery scripts và docs có; governance checklist pass
+- [x] Documentation hoàn chỉnh; deployment & recovery pass; governance pass; handover pass
+- [x] Có biên bản sign-off cuối cùng và tiêu chí chuyển giao vận hành được chốt
 
 **Phụ thuộc:** Phase 7.
 
